@@ -30,6 +30,133 @@
  * SOFTWARE.
  */
 
+class DragToPan {
+    /** @type {HTMLElement} */
+    #parent;
+    /** @type {HTMLElement} */
+    #child;
+
+    /** @type {boolean} */
+    #isDragging = false;
+    /** @type {number} */
+    #startX = 0;
+    /** @type {number} */
+    #startY = 0;
+    /** @type {number} */
+    #posX = 0;
+    /** @type {number} */
+    #posY = 0;
+
+    /** @type {(ev: MouseEvent) => void} */
+    #mousedown;
+    /** @type {(ev: MouseEvent) => void} */
+    #mouseup;
+    /** @type {(ev: MouseEvent) => void} */
+    #mousemove;
+
+    /**
+     * @param {HTMLElement} parent
+     * @param {HTMLElement} child
+     */
+    constructor(parent, child) {
+        this.#parent = parent;
+        this.#child = child;
+
+        this.#mousedown = (ev) => {
+            this.#isDragging = true;
+            this.#startX = ev.clientX;
+            this.#startY = ev.clientY;
+        };
+
+        this.#mouseup = () => {
+            this.#isDragging = false;
+            const left = parseInt(child.style.left || "0", 10);
+            const top = parseInt(child.style.top || "0", 10);
+            this.#posX = left;
+            this.#posY = top;
+        };
+
+        this.#mousemove = (ev) => {
+            if (!this.#isDragging) {
+                return;
+            }
+
+            const dx = ev.clientX - this.#startX;
+            const dy = ev.clientY - this.#startY;
+
+            let newX = this.#posX + dx;
+            let newY = this.#posY + dy;
+
+            const parentRect = parent.getBoundingClientRect();
+            const childRect = child.getBoundingClientRect();
+
+            const maxOffsetX = 0;
+            const maxOffsetY = 0;
+            const minOffsetX = parentRect.width - childRect.width;
+            const minOffsetY = parentRect.height - childRect.height;
+
+            newX = Math.min(maxOffsetX, Math.max(minOffsetX, newX));
+            newY = Math.min(maxOffsetY, Math.max(minOffsetY, newY));
+
+            child.style.left = `${newX}px`;
+            child.style.top = `${newY}px`;
+        };
+    }
+
+    /**
+     * Returns whether drag-to-pan is enabled.
+     *
+     * @returns {boolean} True if drag-to-pan is enabled on the parent/child pair.
+     */
+    enabled() {
+        return this.#child.classList.contains("draggable");
+    }
+
+    /**
+     * @param {number} width
+     * @param {number} height
+     * @returns {void}
+     */
+    connect(width, height) {
+        const parent = this.#parent;
+        const child = this.#child;
+
+        parent.classList.add("viewport");
+        this.#child.classList.add("draggable");
+
+        parent.style.width = child.style.width = `${width}px`;
+        parent.style.height = child.style.height = `${height}px`;
+
+        parent.addEventListener("mousedown", this.#mousedown);
+        document.addEventListener("mouseup", this.#mouseup);
+        document.addEventListener("mousemove", this.#mousemove);
+    }
+
+    /**
+     * @returns {void}
+     */
+    disconnect() {
+        const parent = this.#parent;
+        const child = this.#child;
+
+        parent.classList.remove("viewport");
+        child.classList.remove("draggable");
+
+        parent.removeAttribute("style");
+        child.removeAttribute("style");
+
+        parent.removeEventListener("mousedown", this.#mousedown);
+        document.removeEventListener("mouseup", this.#mouseup);
+        document.removeEventListener("mousemove", this.#mousemove);
+
+        this.#isDragging = false;
+        this.#startX = 0;
+        this.#startY = 0;
+        this.#posX = 0;
+        this.#posY = 0;
+    }
+}
+
 /**
  * Represents an item in the `srcset` attribute of an `<img>` element.
  */
@@ -176,8 +303,8 @@ class BoxsharpItem {
             while ((match = regexp.exec(srcset)) !== null) {
                 refs.push(new SourceSetItem(match[1], parseInt(match[2])));
             }
-            refs.sort((a, b) => a.compare(b));
-            if (refs) {
+            if (refs.length) {
+                refs.sort((a, b) => a.compare(b));
                 imageURL = refs[0].url;
             }
         }
@@ -284,7 +411,7 @@ class BoxsharpOptions {
  */
 class BoxsharpDialog extends HTMLElement {
     /** @type {HTMLElement} */
-    #container;
+    #backdrop;
     /** @type {HTMLImageElement} */
     #image;
     /** @type {HTMLVideoElement} */
@@ -299,22 +426,23 @@ class BoxsharpDialog extends HTMLElement {
     #next;
     /** @type {(ev: KeyboardEvent) => void} */
     #keydownCallback;
-
-    constructor() {
-        super();
-    }
+    /** @type {DragToPan} */
+    #draggable;
 
     connectedCallback() {
         const shadow = this.attachShadow({ mode: "open" });
 
+        let container;
         const cssURL = new URL('./boxsharp.css', import.meta.url);
         shadow.append(
             HTML("link", { rel: "stylesheet", "href": cssURL }),
-            this.#container = HTML("div", { className: "dialog" },
+            this.#backdrop = HTML("div", { className: "backdrop" },
                 HTML("figure", {},
-                    this.#image = /** @type {HTMLImageElement} */ (HTML("img")),
-                    this.#video = /** @type {HTMLVideoElement} */ (HTML("video", { controls: true })),
-                    this.#iframe = /** @type {HTMLIFrameElement} */ (HTML("iframe", { allow: "fullscreen" })),
+                    container = HTML("div", {},
+                        this.#image = /** @type {HTMLImageElement} */ (HTML("img")),
+                        this.#video = /** @type {HTMLVideoElement} */ (HTML("video", { controls: true })),
+                        this.#iframe = /** @type {HTMLIFrameElement} */ (HTML("iframe", { allow: "fullscreen" }))
+                    ),
                     HTML("nav", { class: "pagination" },
                         this.#prev = HTML("a", { href: "#", className: "prev", ariaLabel: "←" }),
                         this.#next = HTML("a", { href: "#", className: "next", ariaLabel: "→" }),
@@ -324,9 +452,30 @@ class BoxsharpDialog extends HTMLElement {
             )
         );
 
+        const draggable = this.#draggable = new DragToPan(container, this.#image);
+        this.#image.addEventListener("dblclick", () => {
+            if (draggable.enabled()) {
+                draggable.disconnect();
+                this.#image.sizes = `100vw`;
+            } else {
+                // choose largest resolution available
+                let refs = [];
+                const regexp = /(\S+)\s+(\d+)[wx](?:,|$)/g;
+                let match;
+                while ((match = regexp.exec(this.#image.srcset)) !== null) {
+                    refs.push(new SourceSetItem(match[1], parseInt(match[2])));
+                }
+                if (refs.length) {
+                    refs.sort((a, b) => b.compare(a));
+                    this.#image.sizes = `${refs[0].width}px`;
+                }
+                draggable.connect(this.#image.naturalWidth, this.#image.naturalHeight);
+            }
+        });
+
         this.reset();
-        this.#container.addEventListener("click", (ev) => {
-            if (ev.target === this.#container) {
+        this.#backdrop.addEventListener("click", (ev) => {
+            if (ev.target === this.#backdrop && !this.#draggable.enabled()) {
                 this.close();
             }
         });
@@ -342,14 +491,14 @@ class BoxsharpDialog extends HTMLElement {
         });
 
         this.#keydownCallback = (ev) => {
-            if (!is_visible(this.#container)) {
+            if (!is_visible(this.#backdrop)) {
                 return;
             }
 
             let cancel = true;
             switch (ev.key) {
                 case "Escape":
-                    if (is_visible(this.#container)) {
+                    if (is_visible(this.#backdrop)) {
                         this.close();
                     }
                     break;
@@ -385,6 +534,8 @@ class BoxsharpDialog extends HTMLElement {
     }
 
     disconnectedCallback() {
+        this.#draggable.disconnect();
+
         document.removeEventListener("keydown", this.#keydownCallback);
     }
 
@@ -394,32 +545,32 @@ class BoxsharpDialog extends HTMLElement {
      * @returns {void}
      */
     reset() {
-        const container = this.#container;
-        container.classList.add("hidden");
-        container.classList.remove("opening");
-        container.classList.remove("visible");
+        this.#draggable.disconnect();
+
+        const backdrop = this.#backdrop;
+        backdrop.classList.add("hidden");
+        backdrop.classList.remove("opening");
+        backdrop.classList.remove("visible");
+
+        const removeAttributes = (/** @type {HTMLElement} */ elem, /** @type {string[]} */ attrs) => {
+            attrs.forEach((attr) => { elem.removeAttribute(attr); });
+        };
 
         const image = this.#image;
         image.classList.add("hidden");
-        image.removeAttribute("src");
-        image.removeAttribute("srcset");
-        image.removeAttribute("sizes");
-        image.removeAttribute("alt");
+        removeAttributes(image, ["src", "srcset", "sizes", "alt"]);
 
         const video = this.#video;
         video.classList.add("hidden");
         video.pause();
         video.currentTime = 0;
         video.textContent = "";
-        video.removeAttribute("src");
-        video.removeAttribute("poster");
+        removeAttributes(video, ["src", "poster"]);
         video.load();
 
         const iframe = this.#iframe;
         iframe.classList.add("hidden");
-        iframe.removeAttribute("width");
-        iframe.removeAttribute("height");
-        iframe.removeAttribute("src");
+        removeAttributes(iframe, ["src", "width", "height"]);
 
         const caption = this.#figcaption;
         caption.textContent = "";
@@ -562,15 +713,15 @@ class BoxsharpDialog extends HTMLElement {
             this.#figcaption.innerHTML = caption;
         }
 
-        const container = this.#container;
-        container.classList.remove("hidden");
-        container.classList.add("opening");
-        void container.offsetWidth;  // force page rendering
+        const backdrop = this.#backdrop;
+        backdrop.classList.remove("hidden");
+        backdrop.classList.add("opening");
+        void backdrop.offsetWidth;  // force page rendering
 
         // trigger transition to full size
         requestAnimationFrame(() => {
-            container.classList.add("visible");
-            container.classList.remove("opening");
+            backdrop.classList.add("visible");
+            backdrop.classList.remove("opening");
         });
     }
 

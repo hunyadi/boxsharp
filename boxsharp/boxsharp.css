@@ -7,7 +7,7 @@
  * @see https://github.com/hunyadi/boxsharp
 **/
 
-.dialog {
+.backdrop {
     position: fixed;
     box-sizing: border-box;
     left: 0;
@@ -32,6 +32,7 @@ figure {
     border-radius: 20px;
     overflow: hidden;
 
+    position: relative;
     box-sizing: border-box;
     max-width: 100%;
     max-height: 100%;
@@ -46,14 +47,15 @@ figure {
     transition: transform 1.0s ease;
 }
 
-figure>img,
-figure>video {
+figure>div,
+img,
+video,
+iframe {
     box-sizing: border-box;
     max-width: 100%;
-    max-height: calc(90vh - 3em);
+    max-height: calc(100vh - 3em);
     object-fit: contain;
-
-    flex: 1 1;
+    user-select: none;
 }
 
 figure>figcaption {
@@ -93,19 +95,40 @@ figure>nav>.next:hover {
 }
 
 /* starts the animation; the pop-up window is about to display */
-.dialog.opening {
+.backdrop.opening {
     opacity: 0;
 }
 
-.dialog.opening>figure {
+.backdrop.opening>figure {
     transform: scale(0.2);
 }
 
 /* ends the animation; the pop-up window is fully visible */
-.dialog.visible>figure {
+.backdrop.visible>figure {
     opacity: 1;
 }
 
-.dialog.visible>figure {
+.backdrop.visible>figure {
     transform: scale(1);
+}
+
+.viewport {
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+}
+
+.viewport:active {
+    cursor: grabbing;
+}
+
+.draggable {
+    position: absolute;
+    max-width: none;
+    max-height: none;
+    object-fit: none;
+    top: 0;
+    left: 0;
+    user-select: none;
+    -webkit-user-drag: none;
 }
