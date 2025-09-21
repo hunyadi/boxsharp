@@ -1,0 +1,111 @@
+/**
+ * boxsharp: a responsive lightbox pop-up window with CSS3 and vanilla JavaScript
+ * @author Levente Hunyadi
+ * @version 0.1
+ * @copyright 2025 Levente Hunyadi
+ * @see https://hunyadi.info.hu/projects/boxsharp
+ * @see https://github.com/hunyadi/boxsharp
+**/
+
+.dialog {
+    position: fixed;
+    box-sizing: border-box;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 9999;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background-color: rgba(0, 0, 0, 0.75);
+
+    opacity: 1;
+    transition: opacity 1.0s ease;
+}
+
+figure {
+    margin: 20px;
+    border: 3px solid darkgray;
+    border-radius: 20px;
+    overflow: hidden;
+
+    box-sizing: border-box;
+    max-width: 100%;
+    max-height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    background-color: rgba(255, 255, 255, 0.5);
+
+    transform: scale(1);
+    transition: transform 1.0s ease;
+}
+
+figure>img,
+figure>video {
+    box-sizing: border-box;
+    max-width: 100%;
+    max-height: calc(90vh - 3em);
+    object-fit: contain;
+
+    flex: 1 1;
+}
+
+figure>figcaption {
+    box-sizing: border-box;
+    max-width: 100%;
+
+    flex: 0 0;
+}
+
+figure>nav>* {
+    background: none center no-repeat;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 60px;
+}
+
+figure>nav>.prev {
+    left: 0;
+    opacity: 0;
+    background-image: url(data:image/svg+xml;charset=utf-8;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1OCcgaGVpZ2h0PSc0OCcgdmlld0JveD0nMCAwIDEwMCAxMDAnPjxyZWN0IHJ5PScyNScgeD0nMTAuNDE3JyBoZWlnaHQ9JzEwMCcgd2lkdGg9JzEwMCcgZmlsbC1vcGFjaXR5PScuNScvPjxwYXRoIGQ9J002NSAzNi41aDE2djI4SDY1em0tMjUgMTRsMjUgMzRtMCAwbC0yNS0zNCAyNS0zNScgZmlsbD0nI2ZmZicvPjwvc3ZnPg==);
+}
+
+figure>nav>.next {
+    right: 0;
+    opacity: 0;
+    background-image: url(data:image/svg+xml;charset=utf-8;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1OCcgaGVpZ2h0PSc0OCcgdmlld0JveD0nMCAwIDEwMCAxMDAnPjxyZWN0IHJ5PScyNScgeD0nLTEwLjQxNycgaGVpZ2h0PScxMDAnIHdpZHRoPScxMDAnIGZpbGwtb3BhY2l0eT0nLjUnLz48cGF0aCBkPSdNMzUgMzYuNUgxOXYyOGgxNnptMjUgMTRsLTI1IDM0bTAgMGwyNS0zNC0yNS0zNScgZmlsbD0nI2ZmZicvPjwvc3ZnPg==);
+}
+
+figure>nav>.prev:hover,
+figure>nav>.next:hover {
+    opacity: 1;
+}
+
+.hidden {
+    display: none;
+}
+
+/* starts the animation; the pop-up window is about to display */
+.dialog.opening {
+    opacity: 0;
+}
+
+.dialog.opening>figure {
+    transform: scale(0.2);
+}
+
+/* ends the animation; the pop-up window is fully visible */
+.dialog.visible>figure {
+    opacity: 1;
+}
+
+.dialog.visible>figure {
+    transform: scale(1);
+}
