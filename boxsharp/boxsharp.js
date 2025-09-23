@@ -30,13 +30,21 @@
  * SOFTWARE.
  */
 
-class DragToPan {
-    /** @type {HTMLElement} */
-    #parent;
-    /** @type {HTMLElement} */
-    #child;
+/**
+ * Implements drag to pan on a large image.
+ */
+class BoxsharpDraggable extends HTMLElement {
+    static observedAttributes = ["src"];
 
-    /** @type {boolean} */
+    /** @type {HTMLImageElement} - The image to pan. */
+    #draggable;
+
+    /** @type {number} - Natural image width in CSS pixels. */
+    #width = 0;
+    /** @type {number} - Natural image height in CSS pixels. */
+    #height = 0;
+
+    /** @type {boolean} - True if a drag operation is in progress. */
     #isDragging = false;
     /** @type {number} */
     #startX = 0;
@@ -48,33 +56,54 @@ class DragToPan {
     #posY = 0;
 
     /** @type {(ev: MouseEvent) => void} */
-    #mousedown;
-    /** @type {(ev: MouseEvent) => void} */
     #mouseup;
     /** @type {(ev: MouseEvent) => void} */
     #mousemove;
 
-    /**
-     * @param {HTMLElement} parent
-     * @param {HTMLElement} child
-     */
-    constructor(parent, child) {
-        this.#parent = parent;
-        this.#child = child;
+    connectedCallback() {
+        const shadow = this.attachShadow({ mode: "open" });
 
-        this.#mousedown = (ev) => {
+        const style = document.createElement("style");
+        style.textContent = `
+:host {
+display: inline-block;
+}
+div {
+position: relative;
+overflow: hidden;
+width: 100%;
+height: 100%;
+cursor: grab;
+}
+div:active {
+cursor: grabbing;
+}
+img {
+position: absolute;
+user-select: none;
+-webkit-user-drag: none;
+}`;
+        const container = document.createElement("div");
+        const draggable = this.#draggable = document.createElement("img");
+        container.append(draggable);
+        shadow.append(style, container);
+
+        this.#update();
+
+        container.addEventListener("mousedown", (ev) => {
             this.#isDragging = true;
             this.#startX = ev.clientX;
             this.#startY = ev.clientY;
-        };
+        });
 
         this.#mouseup = () => {
             this.#isDragging = false;
-            const left = parseInt(child.style.left || "0", 10);
-            const top = parseInt(child.style.top || "0", 10);
+            const left = parseInt(draggable.style.left, 10);
+            const top = parseInt(draggable.style.top, 10);
             this.#posX = left;
             this.#posY = top;
         };
+        document.addEventListener("mouseup", this.#mouseup);
 
         this.#mousemove = (ev) => {
             if (!this.#isDragging) {
@@ -87,8 +116,8 @@ class DragToPan {
             let newX = this.#posX + dx;
             let newY = this.#posY + dy;
 
-            const parentRect = parent.getBoundingClientRect();
-            const childRect = child.getBoundingClientRect();
+            const parentRect = container.getBoundingClientRect();
+            const childRect = draggable.getBoundingClientRect();
 
             const maxOffsetX = 0;
             const maxOffsetY = 0;
@@ -98,69 +127,87 @@ class DragToPan {
             newX = Math.min(maxOffsetX, Math.max(minOffsetX, newX));
             newY = Math.min(maxOffsetY, Math.max(minOffsetY, newY));
 
-            child.style.left = `${newX}px`;
-            child.style.top = `${newY}px`;
+            draggable.style.left = `${newX}px`;
+            draggable.style.top = `${newY}px`;
         };
+        document.addEventListener("mousemove", this.#mousemove);
+    }
+
+    disconnectedCallback() {
+        // reset intrinsic element size
+        this.style.width = "0";
+        this.style.height = "0";
+
+        document.removeEventListener("mouseup", this.#mouseup);
+        document.removeEventListener("mousemove", this.#mousemove);
     }
 
     /**
-     * Returns whether drag-to-pan is enabled.
-     *
-     * @returns {boolean} True if drag-to-pan is enabled on the parent/child pair.
+     * @param {string} name
+     * @param {?string} oldValue
+     * @param {?string} newValue
+     * @returns {void}
      */
-    enabled() {
-        return this.#child.classList.contains("draggable");
+    attributeChangedCallback(name, oldValue, newValue) {
+        switch (name) {
+            case "src":
+                if (oldValue !== newValue) {
+                    if (newValue) {
+                        const preloader = new Image();
+                        preloader.addEventListener("load", () => {
+                            this.#resize(preloader.naturalWidth, preloader.naturalHeight);
+                        }, { once: true });
+                        preloader.src = newValue;
+                    } else {
+                        this.#resize(0, 0);
+                    }
+                }
+                break;
+        }
     }
 
     /**
+     * Changes the size of the image shown in the drag-to-pan viewport.
+     *
      * @param {number} width
      * @param {number} height
      * @returns {void}
      */
-    connect(width, height) {
-        const parent = this.#parent;
-        const child = this.#child;
+    #resize(width, height) {
+        // set intrinsic element size based on encapsulated image
+        this.#width = width;
+        this.#height = height;
 
-        parent.classList.add("viewport");
-        this.#child.classList.add("draggable");
-
-        parent.style.width = child.style.width = `${width}px`;
-        parent.style.height = child.style.height = `${height}px`;
-
-        parent.addEventListener("mousedown", this.#mousedown);
-        document.addEventListener("mouseup", this.#mouseup);
-        document.addEventListener("mousemove", this.#mousemove);
+        if (this.isConnected) {
+            this.#update();
+        }
     }
 
     /**
+     * Updates the drag-to-pan viewport.
+     *
      * @returns {void}
      */
-    disconnect() {
-        const parent = this.#parent;
-        const child = this.#child;
-
-        parent.classList.remove("viewport");
-        child.classList.remove("draggable");
-
-        parent.removeAttribute("style");
-        child.removeAttribute("style");
-
-        parent.removeEventListener("mousedown", this.#mousedown);
-        document.removeEventListener("mouseup", this.#mouseup);
-        document.removeEventListener("mousemove", this.#mousemove);
-
+    #update() {
         this.#isDragging = false;
         this.#startX = 0;
         this.#startY = 0;
         this.#posX = 0;
         this.#posY = 0;
+
+        const draggable = this.#draggable;
+        draggable.src = this.getAttribute("src") || "";
+        this.style.width = draggable.style.width = `${this.#width}px`;
+        this.style.height = draggable.style.height = `${this.#height}px`;
+        draggable.style.left = "0";
+        draggable.style.top = "0";
     }
 }
 
 /**
- * Represents an item in the `srcset` attribute of an `<img>` element.
+ * Represents a single item in the `srcset` attribute of an `<img>` element.
  */
-class SourceSetItem {
+class ImageSource {
     /** @type {string} */
     url;
     /** @type {number} */
@@ -178,7 +225,7 @@ class SourceSetItem {
     /**
      * Allows this class to be used with `sort`.
      *
-     * @param {SourceSetItem} op - The item to compare against.
+     * @param {ImageSource} op - The item to compare against.
      * @returns {number}
      */
     compare(op) {
@@ -187,12 +234,92 @@ class SourceSetItem {
 }
 
 /**
+ * Represents a parsed `srcset` attribute acquired from an `<img>` element.
+ */
+class ImageSourceSet {
+    /** @type {ImageSource[]} */
+    items;
+
+    /**
+     * @param {ImageSource[]} items
+     */
+    constructor(items) {
+        this.items = items;
+    }
+
+    /**
+     * @returns {boolean} - True if the source set is empty.
+     */
+    get empty() {
+        return this.items.length === 0;
+    }
+
+    /**
+     * Lowest resolution image available in the set.
+     *
+     * @returns {string} URL to lowest resolution image.
+     */
+    lowest() {
+        return this.items[this.items.length - 1].url;
+    }
+
+    /**
+     * Highest resolution image available in the set.
+     *
+     * @returns {string} URL to highest resolution image.
+     */
+    highest() {
+        return this.items[0].url;
+    }
+
+    /**
+     * Ensures smallest image size is selected that fills the browser window without scaling the image beyond its natural dimensions.
+     *
+     * @returns {string} A value assignable to the attribute `sizes`.
+     */
+    toClampedSizes() {
+        const width = this.items[0].width;
+        return `(max-width: ${width}px) 100vw, ${width}px`;
+    }
+
+    /**
+     * Returns a source set specification that allows the browser to select the smallest image size that fills the browser window.
+     *
+     * @returns {string} - A value assignable to the attribute `srcset`.
+     */
+    toString() {
+        return this.items.map(item => `${item.url} ${item.width}w`).join(", ");
+    }
+
+    /**
+     * Create a source set from a string.
+     *
+     * @param {string} srcset - `srcset` attribute value.
+     * @returns {ImageSourceSet}
+     */
+    static parse(srcset) {
+        /** @type {ImageSource[]} */
+        let items = [];
+        const regexp = /(\S+)\s+(\d+)w(?:,|$)/g;
+        let match;
+        while ((match = regexp.exec(srcset)) !== null) {
+            items.push(new ImageSource(match[1], parseInt(match[2])));
+        }
+        if (items.length) {
+            // sort descending, largest width first
+            items.sort((a, b) => b.compare(a));
+        }
+        return new ImageSourceSet(items);
+    }
+}
+
+/**
  * Source URL and media type pairs captured by the HTML `source` element.
  */
-class BoxsharpVideoSource {
-    /** @type {string} */
+class VideoSource {
+    /** @type {string} - Media source URL. */
     src;
-    /** @type {?string} */
+    /** @type {?string} - Media type. */
     type;
 
     /**
@@ -211,10 +338,10 @@ class BoxsharpVideoSource {
 class BoxsharpItem {
     /** @type {?string} - `src` attribute value for an image, or `poster` attribute value for a video. */
     image;
-    /** @type {?string} - `srcset` attribute value for an image. */
-    srcset;
-    /** @type {BoxsharpVideoSource[]} - Source URL and media type pairs for a video. */
-    video;
+    /** @type {ImageSourceSet} - Source URLs acquired from the `srcset` attribute value of an image. */
+    srcset = new ImageSourceSet([]);
+    /** @type {VideoSource[]} - Source URL and media type pairs for a video. */
+    video = [];
     /** @type {?string} - `src` attribute value for a frame. */
     frame;
     /** @type {?string} - Alternate text for the image or video. */
@@ -225,10 +352,6 @@ class BoxsharpItem {
     width;
     /** @type {?number} - Intrinsic height of the content in CSS pixels, `null` to auto-detect. */
     height;
-
-    constructor() {
-        this.video = [];
-    }
 
     /**
      * Extracts the caption text from a HTML `<figure>` element.
@@ -275,8 +398,8 @@ class BoxsharpItem {
 
         /** @type {?string} */
         let imageURL = null;
-        /** @type {?string} */
-        let srcset = null;
+        /** @type {ImageSourceSet} */
+        let srcset = new ImageSourceSet([]);
         /** @type {?string} */
         let videoURL = null;
         /** @type {?string} */
@@ -287,26 +410,16 @@ class BoxsharpItem {
         const thumbnail = anchor.querySelector("img");
         if (thumbnail) {
             imageURL = thumbnail.src;
-            srcset = thumbnail.srcset;
+            srcset = ImageSourceSet.parse(thumbnail.srcset);
             alt = thumbnail.alt;
         }
 
         if (anchor.dataset.srcset) {
-            srcset = anchor.dataset.srcset;
+            srcset = ImageSourceSet.parse(anchor.dataset.srcset);
         }
 
-        if (!imageURL && srcset) {
-            // choose smallest resolution available
-            let refs = [];
-            const regexp = /(\S+)\s+(\d+)[wx](?:,|$)/g;
-            let match;
-            while ((match = regexp.exec(srcset)) !== null) {
-                refs.push(new SourceSetItem(match[1], parseInt(match[2])));
-            }
-            if (refs.length) {
-                refs.sort((a, b) => a.compare(b));
-                imageURL = refs[0].url;
-            }
+        if (!imageURL && !srcset.empty) {
+            imageURL = srcset.lowest();
         }
 
         const href = anchor.getAttribute("href");
@@ -329,7 +442,7 @@ class BoxsharpItem {
         item.image = imageURL;
         item.srcset = srcset;
         if (videoURL) {
-            item.video.push(new BoxsharpVideoSource(videoURL, null));
+            item.video.push(new VideoSource(videoURL, null));
         }
         item.frame = frameURL;
         item.alt = alt;
@@ -355,13 +468,13 @@ class BoxsharpItem {
             throw new Error("expected: a wrapped `video` element");
         }
 
-        /** @type {BoxsharpVideoSource[]} */
+        /** @type {VideoSource[]} */
         const sources = [];
         elem.querySelectorAll("source").forEach(source => {
-            sources.push(new BoxsharpVideoSource(source.src, source.type));
+            sources.push(new VideoSource(source.src, source.type));
         });
         if (!sources.length && elem.src) {
-            sources.push(new BoxsharpVideoSource(elem.src, null));
+            sources.push(new VideoSource(elem.src, null));
         }
 
         const item = new BoxsharpItem();
@@ -378,7 +491,7 @@ class BoxsharpItem {
  * @param {HTMLElement} elem - The element whose visibility to check.
  * @returns {boolean}
  */
-function is_visible(elem) {
+function isVisible(elem) {
     return !elem.classList.contains("hidden");
 }
 
@@ -426,59 +539,51 @@ class BoxsharpDialog extends HTMLElement {
     #next;
     /** @type {(ev: KeyboardEvent) => void} */
     #keydownCallback;
-    /** @type {DragToPan} */
+    /** @type {BoxsharpDraggable} */
     #draggable;
+    /** @type {HTMLElement} */
+    #expander;
 
     connectedCallback() {
         const shadow = this.attachShadow({ mode: "open" });
 
-        let container;
-        const cssURL = new URL('./boxsharp.css', import.meta.url);
+        const cssURL = new URL("./boxsharp.css", import.meta.url);
+        let figure;
         shadow.append(
             HTML("link", { rel: "stylesheet", "href": cssURL }),
             this.#backdrop = HTML("div", { className: "backdrop" },
-                HTML("figure", {},
-                    container = HTML("div", {},
-                        this.#image = /** @type {HTMLImageElement} */ (HTML("img")),
-                        this.#video = /** @type {HTMLVideoElement} */ (HTML("video", { controls: true })),
-                        this.#iframe = /** @type {HTMLIFrameElement} */ (HTML("iframe", { allow: "fullscreen" }))
-                    ),
+                figure = HTML("figure", {},
+                    this.#draggable = /** @type {BoxsharpDraggable} */ (HTML("boxsharp-draggable")),
+                    this.#image = /** @type {HTMLImageElement} */ (HTML("img")),
+                    this.#video = /** @type {HTMLVideoElement} */ (HTML("video", { controls: true })),
+                    this.#iframe = /** @type {HTMLIFrameElement} */ (HTML("iframe", { allow: "fullscreen" })),
                     HTML("nav", { class: "pagination" },
                         this.#prev = HTML("a", { href: "#", className: "prev", ariaLabel: "←" }),
                         this.#next = HTML("a", { href: "#", className: "next", ariaLabel: "→" }),
                     ),
+                    this.#expander = HTML("div", { className: "expander" }),
                     this.#figcaption = HTML("figcaption")
                 )
             )
         );
 
-        const draggable = this.#draggable = new DragToPan(container, this.#image);
-        this.#image.addEventListener("dblclick", () => {
-            if (draggable.enabled()) {
-                draggable.disconnect();
-                this.#image.sizes = `100vw`;
-            } else {
-                // choose largest resolution available
-                let refs = [];
-                const regexp = /(\S+)\s+(\d+)[wx](?:,|$)/g;
-                let match;
-                while ((match = regexp.exec(this.#image.srcset)) !== null) {
-                    refs.push(new SourceSetItem(match[1], parseInt(match[2])));
-                }
-                if (refs.length) {
-                    refs.sort((a, b) => b.compare(a));
-                    this.#image.sizes = `${refs[0].width}px`;
-                }
-                draggable.connect(this.#image.naturalWidth, this.#image.naturalHeight);
-            }
-        });
-
         this.reset();
         this.#backdrop.addEventListener("click", (ev) => {
-            if (ev.target === this.#backdrop && !this.#draggable.enabled()) {
+            if (ev.target === this.#backdrop && !isVisible(this.#draggable)) {
                 this.close();
             }
         });
+
+        const image = this.#image;
+        const expander = this.#expander;
+        const clickCallback = () => {
+            if (this.#expandable()) {
+                this.#expand(expander.classList.toggle("expanded"));
+            }
+        };
+        expander.addEventListener("click", clickCallback);
+        image.addEventListener("dblclick", clickCallback);
+
         this.#prev.addEventListener("click", (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
@@ -491,34 +596,34 @@ class BoxsharpDialog extends HTMLElement {
         });
 
         this.#keydownCallback = (ev) => {
-            if (!is_visible(this.#backdrop)) {
+            if (!isVisible(this.#backdrop)) {
                 return;
             }
 
             let cancel = true;
             switch (ev.key) {
                 case "Escape":
-                    if (is_visible(this.#backdrop)) {
+                    if (isVisible(this.#backdrop)) {
                         this.close();
                     }
                     break;
                 case "ArrowLeft":
-                    if (is_visible(this.#prev)) {
+                    if (isVisible(this.#prev)) {
                         this.prev();
                     }
                     break;
                 case "ArrowRight":
-                    if (is_visible(this.#next)) {
+                    if (isVisible(this.#next)) {
                         this.next();
                     }
                     break;
                 case "Home":
-                    if (is_visible(this.#prev)) {
+                    if (isVisible(this.#prev)) {
                         this.first();
                     }
                     break;
                 case "End":
-                    if (is_visible(this.#next)) {
+                    if (isVisible(this.#next)) {
                         this.last();
                     }
                     break;
@@ -531,11 +636,22 @@ class BoxsharpDialog extends HTMLElement {
             }
         };
         document.addEventListener("keydown", this.#keydownCallback);
+
+        let lastSrc;
+        const observer = new ResizeObserver(() => {
+            if (expander.classList.contains("expanded")) {
+                return;
+            }
+
+            if (image.currentSrc !== lastSrc) {
+                lastSrc = image.currentSrc;
+                expander.classList.toggle("hidden", !this.#expandable());
+            }
+        });
+        observer.observe(figure);
     }
 
     disconnectedCallback() {
-        this.#draggable.disconnect();
-
         document.removeEventListener("keydown", this.#keydownCallback);
     }
 
@@ -545,12 +661,12 @@ class BoxsharpDialog extends HTMLElement {
      * @returns {void}
      */
     reset() {
-        this.#draggable.disconnect();
-
         const backdrop = this.#backdrop;
         backdrop.classList.add("hidden");
         backdrop.classList.remove("opening");
         backdrop.classList.remove("visible");
+
+        this.#expand(false);
 
         const removeAttributes = (/** @type {HTMLElement} */ elem, /** @type {string[]} */ attrs) => {
             attrs.forEach((attr) => { elem.removeAttribute(attr); });
@@ -560,12 +676,16 @@ class BoxsharpDialog extends HTMLElement {
         image.classList.add("hidden");
         removeAttributes(image, ["src", "srcset", "sizes", "alt"]);
 
+        const draggable = this.#draggable;
+        draggable.classList.add("hidden");
+        draggable.removeAttribute("src");
+
         const video = this.#video;
         video.classList.add("hidden");
         video.pause();
         video.currentTime = 0;
         video.textContent = "";
-        removeAttributes(video, ["src", "poster"]);
+        removeAttributes(video, ["src", "poster", "width", "height"]);
         video.load();
 
         const iframe = this.#iframe;
@@ -669,15 +789,15 @@ class BoxsharpDialog extends HTMLElement {
                 elem.classList.remove("hidden");
                 this.#show(item);
             }, { once: true });
-        } else if (image || srcset) {
+        } else if (image || !srcset.empty) {
             const preloader = new Image();
             preloader.addEventListener("load", () => {
                 this.#image.classList.remove("hidden");
                 this.#show(item);
             }, { once: true });
-            if (srcset) {
-                preloader.srcset = srcset;
-                preloader.sizes = "100vw";
+            if (!srcset.empty) {
+                preloader.srcset = srcset.toString();
+                preloader.sizes = srcset.toClampedSizes();
             } else if (image) {
                 preloader.src = image;
             }
@@ -695,11 +815,11 @@ class BoxsharpDialog extends HTMLElement {
     #show(item) {
         const { image, srcset, alt, caption } = item;
 
-        if (image || srcset) {
+        if (image || !srcset.empty) {
             const elem = this.#image;
-            if (srcset) {
-                elem.srcset = srcset;
-                elem.sizes = "100vw";
+            if (!srcset.empty) {
+                elem.srcset = srcset.toString();
+                elem.sizes = srcset.toClampedSizes();
             } else if (image) {
                 elem.src = image;
             }
@@ -726,13 +846,60 @@ class BoxsharpDialog extends HTMLElement {
     }
 
     /**
+     * Update the state of the image magnifier.
+     *
+     * @param {boolean} isExpanded
+     */
+    #expand(isExpanded) {
+        const image = this.#image;
+        const draggable = this.#draggable;
+        const expander = this.#expander;
+
+        expander.classList.toggle("expanded", isExpanded);
+
+        if (isExpanded) {
+            expander.classList.remove("hidden");
+            image.classList.add("hidden");
+            const srcset = ImageSourceSet.parse(this.#image.srcset);
+            if (!srcset.empty) {
+                draggable.setAttribute("src", srcset.highest());
+            }
+            draggable.classList.remove("hidden");
+        } else {
+            draggable.classList.add("hidden");
+            draggable.removeAttribute("src");
+            image.classList.remove("hidden");
+        }
+    }
+
+    /**
+     * Determines whether the image is magnifiable.
+     *
+     * @returns {boolean}
+     */
+    #expandable() {
+        const image = this.#image;
+        let largestSrc = image.currentSrc;
+        if (image.srcset) {
+            const srcset = ImageSourceSet.parse(image.srcset);
+            if (!srcset.empty) {
+                const url = URL.parse(srcset.highest(), document.URL);
+                if (url) {
+                    largestSrc = url.toString();
+                }
+            }
+        }
+        return largestSrc !== image.currentSrc || image.naturalWidth !== image.width || image.naturalHeight !== image.height;
+    }
+
+    /**
      * Closes the lightbox pop-up window.
      *
      * @returns {void}
      */
     close() {
         this.reset();
-        this.dispatchEvent(new CustomEvent('closed'));
+        this.dispatchEvent(new CustomEvent("closed"));
     }
 
     /**
@@ -865,7 +1032,7 @@ class BoxsharpCollection {
         /** @type {Object.<string, HTMLAnchorElement[]>} */
         const dictionary = {};
         document.querySelectorAll(`a[rel^=${CSS.escape(name)}-]`).forEach((/** @type {HTMLAnchorElement} */ anchor) => {
-            const rel = anchor.getAttribute('rel');
+            const rel = anchor.getAttribute("rel");
             if (rel) {
                 if (!dictionary[rel]) {
                     dictionary[rel] = [];
@@ -925,6 +1092,7 @@ class BoxsharpLink extends HTMLElement {
     }
 }
 
+customElements.define("boxsharp-draggable", BoxsharpDraggable);
 customElements.define("boxsharp-dialog", BoxsharpDialog);
 customElements.define("boxsharp-link", BoxsharpLink);
 

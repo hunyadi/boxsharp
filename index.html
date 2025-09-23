@@ -50,29 +50,30 @@
     <h2>Features</h2>
 
     <ul>
-        <li>Designed for modern browsers, including Chrome, Edge, Firefox and Safari.</li>
-        <li>Displays a wide range of content types, including images, video, PDF, external pages (iframe), etc.</li>
-        <li>Supports captions; each content item can be assigned a description, which can make use of HTML tags.</li>
-        <li>Navigation with buttons, mouse, or keyboard (left and right arrow) or swipe.</li>
-        <li>Quick-access navigation bar to jump to a particular item.</li>
-        <li>Select best-fit resolution; choose smallest image that fills viewport area.</li>
-        <li>Fit to browser window; oversized content is automatically downscaled.</li>
-        <li>Simple API and out-of-the-box snippets how to get it working on a webpage.</li>
-        <li>100% CSS and pure JavaScript (ECMAScript 2015, web components); no dependencies on third-party libraries.</li>
-        <li>Small network footprint.</li>
+        <li><strong>Modern browser support.</strong><br>Works seamlessly in Chrome, Edge, Firefox, and Safari.</li>
+        <li><strong>Versatile content display.</strong><br>Handles images, videos, PDFs, external pages (via iframes), and more.</li>
+        <li><strong>Custom captions.</strong><br>Add description to each item using plain text or HTML tags.</li>
+        <li><strong>Flexible navigation.</strong><br>Navigate using buttons, keyboard (left/right arrows), mouse, or swipe gestures.</li>
+        <li><strong>Interactive image handling.</strong><br>Expand large images and pan by dragging.</li>
+        <li><strong>Quick navigation bar.</strong><br>Jump directly to any item with a fast-access navigation bar.</li>
+        <li><strong>Optimized image loading.</strong><br>Automatically selects the smallest image that fills the viewport.</li>
+        <li><strong>Responsive design.</strong><br>Oversized content is scaled down to fit the browser window.</li>
+        <li><strong>Easy integration.</strong><br>Includes a simple API and ready-to-use code snippets for fast setup.</li>
+        <li><strong>Lightweight.</strong><br>Minimal network load for faster performance.</li>
+        <li><strong>No dependencies.</strong><br>Built with 100% CSS and pure JavaScript (ES2020, Web Components); no third-party libraries required.</li>
     </ul>
 
     <h2>How to use</h2>
 
-    <h3>Classic syntax</h3>
+    <h3>Prerequisites</h3>
 
     <ol>
-        <li>Find the text or thumbnail image that you want to trigger a pop-up window when clicked.</li>
-        <li>Wrap the text or image in an <code>&lt;a&gt;</code> element.</li>
-        <li>Add the attribute <code>rel</code> with the value <code>boxsharp</code>.</li>
-        <li>Set the attribute <code>data-srcset</code> on the <code>&lt;a&gt;</code> element to a series of images using the syntax for <a
-                href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Responsive_images#resolution_switching_different_sizes">resolution switching
-                with different sizes</a>.</li>
+        <li>Copy <a href="boxsharp/boxsharp.css" download="boxsharp.css">boxsharp.css</a> and <a href="boxsharp/boxsharp.js"
+                download="boxsharp.js">boxsharp.js</a> to your web server.</li>
+        <li>Add the following to the <code>&lt;head&gt;</code> section of your HTML (using the appropriate location):<br>
+            <pre>&lt;script defer src="path/to/boxsharp.js" type="module"&gt;&lt;/script&gt;</pre>
+        </li>
+        <li>Proceed with <em>modern</em> or <em>classic</em> syntax.</li>
     </ol>
 
     <h3>Modern syntax</h3>
@@ -89,10 +90,34 @@
                 with different sizes</a>.</li>
     </ol>
 
+    <h3>Classic syntax</h3>
+
+    <ol>
+        <li>Ensure you have the initializer in the <code>&lt;head&gt;</code> section of your HTML (using the appropriate location):<br>
+            <pre>
+&lt;script defer type="module"&gt;
+    import { BoxsharpCollection } from "./path/to/boxsharp.js";
+    document.addEventListener("DOMContentLoaded", () => {
+        BoxsharpCollection.scan();
+    });
+&lt;/script&gt;
+</pre>
+        </li>
+        <li>Find the text or thumbnail image that you want to trigger a pop-up window when clicked.</li>
+        <li>Wrap the text or image in an <code>&lt;a&gt;</code> element.</li>
+        <li>Add the attribute <code>rel</code> with the value <code>boxsharp</code>.</li>
+        <li>Set the attribute <code>data-srcset</code> on the <code>&lt;a&gt;</code> element to a series of images using the syntax for <a
+                href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Responsive_images#resolution_switching_different_sizes">resolution switching
+                with different sizes</a>.</li>
+    </ol>
+
     <h2>How it works</h2>
 
-    <p>When the pop-up window initializes, it reads the <code>data-srcset</code> or the <code>srcset</code> attribute, and configures the attributes of
-        a <code>&lt;img&gt;</code> element in the lightbox pop-up window accordingly.
+    <p>When the pop-up window opens, it reads the <code>data-srcset</code> or the <code>srcset</code> attribute, and configures the <code>srcset</code> and
+        <code>sizes</code> attributes of an <code>&lt;img&gt;</code> element in the lightbox pop-up window accordingly, ensuring the browser chooses the optimal
+        image given the current window size. Captions are extracted from the <code>alt</code> or <code>title</code> attribute, or a
+        <code>&lt;figcaption&gt;</code> of an encapsulating or encapsulated <code>&lt;figure&gt;</code> element. Items that are grouped into a collection form a
+        navigable set.
     </p>
 
     <h2>Examples</h2>
@@ -101,7 +126,8 @@
 
     <p>This example uses the web component syntax to activate a pop-up window when the user clicks a thumbnail image. Information on which image to show for
         what screen size is extracted from the <code>srcset</code> attribute of the <code>&lt;img&gt;</code> element. Note the use of <code>sizes</code>, which
-        ensures that the browser doesn't load a high-resolution image for the thumbnail itself.
+        ensures that the browser doesn't load a high-resolution image for the thumbnail itself. Click the expand icon in the top right corner of the pop-up
+        window to display the largest image in the source set, press and hold the mouse button, and move the mouse to pan the image.
     </p>
 
     <div class="example">
@@ -173,9 +199,8 @@
         </li>
         <li>
             <a rel="boxsharp-link" class="hyperlink"
-                data-srcset="https://placehold.co/1500x1000.png 1500w, https://placehold.co/1200x800.png 1200w, https://placehold.co/900x600.png 900w, https://placehold.co/600x400.png 600w, https://placehold.co/300x200.png 300w">Link</a>
-            with a <code>data-srcset</code> but no <code>href</code> attribute. The image resolution is selected
-            adaptively.
+                data-srcset="https://placehold.co/900x600.png 900w, https://placehold.co/600x400.png 600w, https://placehold.co/300x200.png 300w">Link</a>
+            with a <code>data-srcset</code> but no <code>href</code> attribute. The image resolution is selected adaptively.
         </li>
     </ul>
 

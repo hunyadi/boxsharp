@@ -3,7 +3,7 @@
         "module": "es2020",
         "checkJs": true,
         "strictNullChecks": true,
-        "target": "es6"
+        "target": "es2019"
     },
     "exclude": [
         "node_modules"

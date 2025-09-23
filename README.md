@@ -4,16 +4,17 @@
 
 ## Features
 
-- Designed for modern browsers, including Chrome, Edge, Firefox and Safari.
-- Displays a wide range of content types, including images, video, PDF, external pages (iframe), etc.
-- Supports captions; each content item can be assigned a description, which can make use of HTML tags.
-- Navigation with buttons, mouse, or keyboard (left and right arrow) or swipe.
-- Quick-access navigation bar to jump to a particular item.
-- Select best-fit resolution; choose smallest image that fills viewport area.
-- Fit to browser window; oversized content is automatically downscaled.
-- Simple API and out-of-the-box snippets how to get it working on a webpage.
-- 100% CSS and pure JavaScript (ECMAScript 2015, web components); no dependencies on third-party libraries.
-- Small network footprint.
+- **Modern browser support.** Works seamlessly in Chrome, Edge, Firefox, and Safari.
+- **Versatile content display.** Handles images, videos, PDFs, external pages (via iframes), and more.
+- **Custom captions.** Add description to each item using plain text or HTML tags.
+- **Flexible navigation.** Navigate using buttons, keyboard (left/right arrows), mouse, or swipe gestures.
+- **Interactive image handling.** Expand large images and pan by dragging.
+- **Quick navigation bar.** Jump directly to any item with a fast-access navigation bar.
+- **Optimized image loading.** Automatically selects the smallest image that fills the viewport.
+- **Responsive design.** Oversized content is scaled down to fit the browser window.
+- **Easy integration.** Includes a simple API and ready-to-use code snippets for fast setup.
+- **Lightweight.** Minimal network load for faster performance.
+- **No dependencies.** Built with 100% CSS and pure JavaScript (ES2020, Web Components); no third-party libraries required.
 
 ## Acknowledgments
 
