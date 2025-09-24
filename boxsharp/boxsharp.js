@@ -554,12 +554,16 @@ class BoxsharpOptions {
 class BoxsharpDialog extends HTMLElement {
     /** @type {HTMLElement} */
     #backdrop;
+    /** @type {HTMLElement} */
+    #progress;
     /** @type {HTMLImageElement} */
     #image;
     /** @type {HTMLVideoElement} */
     #video;
     /** @type {HTMLIFrameElement} */
     #iframe;
+    /** @type {HTMLElement} */
+    #figure;
     /** @type {HTMLElement} */
     #figcaption;
     /** @type {HTMLElement} */
@@ -576,11 +580,10 @@ class BoxsharpDialog extends HTMLElement {
     connectedCallback() {
         const shadow = this.attachShadow({ mode: "open" });
 
-        let figure;
         shadow.append(
             createStylesheet("boxsharp.css"),
             this.#backdrop = HTML("div", { className: "backdrop" },
-                figure = HTML("figure", {},
+                this.#figure = HTML("figure", {},
                     this.#draggable = /** @type {BoxsharpDraggable} */ (HTML("boxsharp-draggable")),
                     this.#image = /** @type {HTMLImageElement} */ (HTML("img")),
                     this.#video = /** @type {HTMLVideoElement} */ (HTML("video", { controls: true })),
@@ -590,8 +593,9 @@ class BoxsharpDialog extends HTMLElement {
                         this.#nextNav = HTML("a", { href: "#", className: "next", ariaLabel: "→" }),
                     ),
                     this.#expander = HTML("div", { className: "expander" }),
-                    this.#figcaption = HTML("figcaption")
-                )
+                    this.#figcaption = HTML("figcaption"),
+                ),
+                this.#progress = HTML("div", { className: "progress" }),
             )
         );
 
@@ -612,6 +616,7 @@ class BoxsharpDialog extends HTMLElement {
         expander.addEventListener("click", clickCallback);
         image.addEventListener("dblclick", clickCallback);
 
+        // navigation with buttons
         this.#prevNav.addEventListener("click", (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
@@ -623,6 +628,7 @@ class BoxsharpDialog extends HTMLElement {
             this.next();
         });
 
+        // navigation with keys
         this.#keydownCallback = (ev) => {
             if (!isVisible(this.#backdrop)) {
                 return;
@@ -665,6 +671,29 @@ class BoxsharpDialog extends HTMLElement {
         };
         document.addEventListener("keydown", this.#keydownCallback);
 
+        // navigation with swipe actions
+        const backdrop = this.#backdrop;
+        let startX = 0;
+        let endX = 0;
+        backdrop.addEventListener("touchstart", (ev) => {
+            startX = ev.touches[0].clientX;
+            console.log(startX);
+        });
+        backdrop.addEventListener("touchend", (ev) => {
+            const threshold = 50;  // minimum distance in CSS pixels to count as a swipe
+            endX = ev.changedTouches[0].clientX;
+            if (endX - startX > threshold) {  // swiped right
+                if (isVisible(this.#prevNav)) {
+                    this.prev();
+                }
+            } else if (startX - endX > threshold) {  // swiped left
+                if (isVisible(this.#nextNav)) {
+                    this.next();
+                }
+            }
+        });
+
+        // update whether expander icon is visible when container size changes
         let lastSrc;
         const observer = new ResizeObserver(() => {
             if (expander.classList.contains("expanded")) {
@@ -676,7 +705,7 @@ class BoxsharpDialog extends HTMLElement {
                 expander.classList.toggle("hidden", !this.#expandable());
             }
         });
-        observer.observe(figure);
+        observer.observe(this.#figure);
     }
 
     disconnectedCallback() {
@@ -691,8 +720,11 @@ class BoxsharpDialog extends HTMLElement {
     reset() {
         const backdrop = this.#backdrop;
         backdrop.classList.add("hidden");
-        backdrop.classList.remove("opening");
-        backdrop.classList.remove("visible");
+        backdrop.classList.remove("fade-in");
+
+        this.#progress.classList.add("hidden");
+
+        this.#figure.classList.remove("zoom-in");
 
         this.#expand(false);
 
@@ -774,6 +806,8 @@ class BoxsharpDialog extends HTMLElement {
     /**
      * Opens the lightbox pop-up window.
      *
+     * Loads resources to be shown in the lightbox pop-up window.
+     *
      * @param {BoxsharpItem} item - Captures properties associated with an item to display.
      * @param {BoxsharpOptions} options - Configures the appearance of the pop-up window.
      * @returns {void}
@@ -784,6 +818,15 @@ class BoxsharpDialog extends HTMLElement {
         this.#nextNav.classList.toggle("hidden", !next);
 
         this.reset();
+
+        const backdrop = this.#backdrop;
+        backdrop.classList.add("fade-in");
+        backdrop.classList.remove("hidden");
+        this.#figure.classList.add("zoom-in");
+
+        const showLoadingTimeout = setTimeout(() => {
+            this.#progress.classList.remove("hidden");
+        }, 500);
 
         const { image, srcset, video, frame, width, height } = item;
         if (video.length) {
@@ -802,7 +845,7 @@ class BoxsharpDialog extends HTMLElement {
                 elem.height = elem.videoHeight;
                 this.#figcaption.style.width = `${elem.videoWidth}px`;
                 elem.classList.remove("hidden");
-                this.#show(item);
+                this.#show(item, showLoadingTimeout);
             }, { once: true });
         } else if (frame) {
             const elem = this.#iframe;
@@ -815,13 +858,13 @@ class BoxsharpDialog extends HTMLElement {
             }
             elem.addEventListener("load", () => {
                 elem.classList.remove("hidden");
-                this.#show(item);
+                this.#show(item, showLoadingTimeout);
             }, { once: true });
         } else if (image || !srcset.empty) {
             const preloader = new Image();
             preloader.addEventListener("load", () => {
                 this.#image.classList.remove("hidden");
-                this.#show(item);
+                this.#show(item, showLoadingTimeout);
             }, { once: true });
             if (!srcset.empty) {
                 preloader.srcset = srcset.toString();
@@ -830,7 +873,7 @@ class BoxsharpDialog extends HTMLElement {
                 preloader.src = image;
             }
         } else {
-            this.#show(item);
+            this.#show(item, showLoadingTimeout);
         }
     }
 
@@ -838,10 +881,14 @@ class BoxsharpDialog extends HTMLElement {
      * Displays an item in the lightbox pop-up window.
      *
      * @param {BoxsharpItem} item - Captures properties associated with an item to display.
+     * @param {number} showLoadingTimeout - A timeout handle created with `setTimeout`.
      * @returns {void}
      */
-    #show(item) {
+    #show(item, showLoadingTimeout) {
         const { image, srcset, alt, caption } = item;
+
+        clearTimeout(showLoadingTimeout);
+        this.#progress.classList.add("hidden");
 
         if (image || !srcset.empty) {
             const elem = this.#image;
@@ -861,15 +908,9 @@ class BoxsharpDialog extends HTMLElement {
             this.#figcaption.innerHTML = caption;
         }
 
-        const backdrop = this.#backdrop;
-        backdrop.classList.remove("hidden");
-        backdrop.classList.add("opening");
-        void backdrop.offsetWidth;  // force page rendering
-
         // trigger transition to full size
         requestAnimationFrame(() => {
-            backdrop.classList.add("visible");
-            backdrop.classList.remove("opening");
+            this.#figure.classList.remove("zoom-in");
         });
     }
 
@@ -998,7 +1039,9 @@ class BoxsharpCollection {
         const options = new BoxsharpOptions();
         options.prev = index > 0;
         options.next = index < this.#items.length - 1;
-        this.#lightbox.open(this.#items[this.#index], options);
+        requestAnimationFrame(() => {
+            this.#lightbox.open(this.#items[this.#index], options);
+        });
     }
 
     /**

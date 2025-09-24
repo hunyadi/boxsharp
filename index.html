@@ -1,6 +1,8 @@
-<html>
+<!doctype html>
+<html lang="en">
 
 <head>
+    <meta charset="utf-8">
     <title>boxsharp: a responsive lightbox pop-up window with CSS3 and vanilla JavaScript</title>
     <link rel="author" href="https://hunyadi.info.hu/levente">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
@@ -242,13 +244,47 @@
         </boxsharp-link>
     </div>
 
+    <h3>Display a video from YouTube</h3>
+
+    <ol>
+        <li>Click the button <em>Share</em> below the video.</li>
+        <li>Choose <em>Embed</em>.</li>
+        <li>Locate attributes <code>width</code>, <code>height</code> and <code>src</code> in the <code>&lt;iframe&gt;</code> content.</li>
+        <li>Create a <code>&lt;boxsharp-link&gt;</code> with attributes <code>width</code>, <code>height</code> and <code>href</code>.</li>
+    </ol>
+
+    <div class="example">
+        <boxsharp-link width="560" height="315" href="https://www.youtube.com/embed/CKclyyL6Uzw?si=TmUtXqDBeeQDVRw6">
+            <span
+                style="display: inline-block; border-radius: 25px; background-color: red; color: white; width: 100px; height: 75px; font-size: 45px; line-height: 75px; text-align: center; cursor: pointer;">▶</span>
+        </boxsharp-link>
+    </div>
+
+    <h3>Location on Maps</h3>
+
+    <ol>
+        <li>Click the button <em>Share</em>.</li>
+        <li>Choose <em>Embed a map</em>.</li>
+        <li>Locate attribute <code>src</code> in the <code>&lt;iframe&gt;</code> content.</li>
+        <li>Create a <code>&lt;boxsharp-link&gt;</code> with attributes <code>width</code>, <code>height</code> and <code>href</code>.</li>
+    </ol>
+
+    <div class="example">
+        <boxsharp-link width="600" height="600"
+            href="https://maps.google.com/maps?q=Budapest+University+of+Technology+and+Economics&amp;hl=en&amp;ie=UTF8&amp;ll=47.481307,19.056215&amp;spn=0.01005,0.022724&amp;sll=37.0625,-95.677068&amp;sspn=47.885545,93.076172&amp;vpsrc=6&amp;t=m&amp;z=16&amp;output=embed">
+            <span style="font-size: 75px; cursor: pointer;">🗺️</span>
+        </boxsharp-link>
+    </div>
+
     <h3>Display external content</h3>
 
     <p>The example below points to an external website. When the pop-up window opens, the content is visualized in <code>&lt;iframe&gt;</code> element. We use
         attributes <code>width</code> and <code>height</code> because <code>&lt;iframe&gt;</code> doesn't have intrinsic dimensions.</p>
 
     <div class="example">
-        <boxsharp-link width="800" height="600" href="https://www.wikipedia.org/"><span class="hyperlink">Link to Wikipedia</span></boxsharp-link>
+        <boxsharp-link width="800" height="600" href="https://www.wikipedia.org/">
+            <img src="https://upload.wikimedia.org/wikipedia/en/8/80/Wikipedia-logo-v2.svg">
+        </boxsharp-link>
     </div>
 </body>
 

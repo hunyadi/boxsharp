@@ -21,9 +21,43 @@
     justify-content: center;
 
     background-color: rgba(0, 0, 0, 0.75);
+}
 
-    opacity: 1;
-    transition: opacity 1.0s ease;
+.fade-in {
+    animation: fadeIn 1s ease forwards;
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.progress {
+    display: inline-block;
+    position: absolute;
+    box-sizing: border-box;
+    width: 80px;
+    height: 80px;
+    top: 50%;
+    left: 50%;
+    margin: -40px 0 0 -40px;
+    border-radius: 100%;
+    border: 10px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #fff;
+    border-left-color: #fff;
+    animation: spin 1s infinite linear;
+    mix-blend-mode: difference;
+}
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 figure {
@@ -43,8 +77,14 @@ figure {
 
     background-color: rgba(255, 255, 255, 0.5);
 
+    opacity: 1;
     transform: scale(1);
-    transition: transform 1.0s ease;
+    transition: opacity 1.0s ease, transform 1.0s ease;
+}
+
+figure.zoom-in {
+    opacity: 0;
+    transform: scale(0.2);
 }
 
 boxsharp-draggable,
@@ -114,22 +154,4 @@ div.expander.expanded {
 
 .hidden {
     display: none;
-}
-
-/* starts the animation; the pop-up window is about to display */
-.backdrop.opening {
-    opacity: 0;
-}
-
-.backdrop.opening>figure {
-    transform: scale(0.2);
-}
-
-/* ends the animation; the pop-up window is fully visible */
-.backdrop.visible>figure {
-    opacity: 1;
-}
-
-.backdrop.visible>figure {
-    transform: scale(1);
 }
