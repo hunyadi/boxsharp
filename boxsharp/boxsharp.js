@@ -31,6 +31,36 @@
  */
 
 /**
+ * Creates an HTML `<link>` element pointing to a stylesheet.
+ *
+ * A minifier may substitute calls to this function with an inline instantiation of a `<style>` element from a literal string.
+ *
+ * @see {@link createStyle}
+ * @param {string} path - Path to a stylesheet file to import, relative to the JavaScript file location.
+ * @returns {HTMLElement}
+ */
+function createStylesheet(path) {
+    const elem = document.createElement("link");
+    elem.rel = "stylesheet";
+    elem.href = new URL(path, import.meta.url).toString();
+    return elem;
+}
+
+/**
+ * Creates an HTML `<style>` element.
+ *
+ * A minifier may call this function with a CSS literal string as an input argument.
+ *
+ * @param {string} css - CSS stylesheet string.
+ * @returns {HTMLElement}
+ */
+function createStyle(css) {
+    const elem = document.createElement("style");
+    elem.textContent = css;
+    return elem;
+}
+
+/**
  * Implements drag to pan on a large image.
  */
 class BoxsharpDraggable extends HTMLElement {
@@ -63,8 +93,7 @@ class BoxsharpDraggable extends HTMLElement {
     connectedCallback() {
         const shadow = this.attachShadow({ mode: "open" });
 
-        const style = document.createElement("style");
-        style.textContent = `
+        const style = createStyle(`
 :host {
 display: inline-block;
 }
@@ -82,7 +111,7 @@ img {
 position: absolute;
 user-select: none;
 -webkit-user-drag: none;
-}`;
+}`);
         const container = document.createElement("div");
         const draggable = this.#draggable = document.createElement("img");
         container.append(draggable);
@@ -534,9 +563,9 @@ class BoxsharpDialog extends HTMLElement {
     /** @type {HTMLElement} */
     #figcaption;
     /** @type {HTMLElement} */
-    #prev;
+    #prevNav;
     /** @type {HTMLElement} */
-    #next;
+    #nextNav;
     /** @type {(ev: KeyboardEvent) => void} */
     #keydownCallback;
     /** @type {BoxsharpDraggable} */
@@ -547,10 +576,9 @@ class BoxsharpDialog extends HTMLElement {
     connectedCallback() {
         const shadow = this.attachShadow({ mode: "open" });
 
-        const cssURL = new URL("./boxsharp.css", import.meta.url);
         let figure;
         shadow.append(
-            HTML("link", { rel: "stylesheet", "href": cssURL }),
+            createStylesheet("boxsharp.css"),
             this.#backdrop = HTML("div", { className: "backdrop" },
                 figure = HTML("figure", {},
                     this.#draggable = /** @type {BoxsharpDraggable} */ (HTML("boxsharp-draggable")),
@@ -558,8 +586,8 @@ class BoxsharpDialog extends HTMLElement {
                     this.#video = /** @type {HTMLVideoElement} */ (HTML("video", { controls: true })),
                     this.#iframe = /** @type {HTMLIFrameElement} */ (HTML("iframe", { allow: "fullscreen" })),
                     HTML("nav", { class: "pagination" },
-                        this.#prev = HTML("a", { href: "#", className: "prev", ariaLabel: "←" }),
-                        this.#next = HTML("a", { href: "#", className: "next", ariaLabel: "→" }),
+                        this.#prevNav = HTML("a", { href: "#", className: "prev", ariaLabel: "←" }),
+                        this.#nextNav = HTML("a", { href: "#", className: "next", ariaLabel: "→" }),
                     ),
                     this.#expander = HTML("div", { className: "expander" }),
                     this.#figcaption = HTML("figcaption")
@@ -584,12 +612,12 @@ class BoxsharpDialog extends HTMLElement {
         expander.addEventListener("click", clickCallback);
         image.addEventListener("dblclick", clickCallback);
 
-        this.#prev.addEventListener("click", (ev) => {
+        this.#prevNav.addEventListener("click", (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
             this.prev();
         });
-        this.#next.addEventListener("click", (ev) => {
+        this.#nextNav.addEventListener("click", (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
             this.next();
@@ -608,22 +636,22 @@ class BoxsharpDialog extends HTMLElement {
                     }
                     break;
                 case "ArrowLeft":
-                    if (isVisible(this.#prev)) {
+                    if (isVisible(this.#prevNav)) {
                         this.prev();
                     }
                     break;
                 case "ArrowRight":
-                    if (isVisible(this.#next)) {
+                    if (isVisible(this.#nextNav)) {
                         this.next();
                     }
                     break;
                 case "Home":
-                    if (isVisible(this.#prev)) {
+                    if (isVisible(this.#prevNav)) {
                         this.first();
                     }
                     break;
                 case "End":
-                    if (isVisible(this.#next)) {
+                    if (isVisible(this.#nextNav)) {
                         this.last();
                     }
                     break;
@@ -752,8 +780,8 @@ class BoxsharpDialog extends HTMLElement {
      */
     open(item, options) {
         const { prev, next } = options;
-        this.#prev.classList.toggle("hidden", !prev);
-        this.#next.classList.toggle("hidden", !next);
+        this.#prevNav.classList.toggle("hidden", !prev);
+        this.#nextNav.classList.toggle("hidden", !next);
 
         this.reset();
 

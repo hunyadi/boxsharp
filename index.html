@@ -21,10 +21,10 @@
             text-decoration: underline;
         }
     </style>
-    <script defer src="boxsharp/boxsharp.js" type="module"></script>
+    <script defer src="boxsharp/boxsharp.min.js" type="module"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <script defer type="module">
-        import { BoxsharpCollection } from "./boxsharp/boxsharp.js";
+        import { BoxsharpCollection } from "./boxsharp/boxsharp.min.js";
         document.addEventListener("DOMContentLoaded", () => {
             document.querySelectorAll("div.example").forEach(div => {
                 const pre = document.createElement("pre");
@@ -65,7 +65,17 @@
 
     <h2>How to use</h2>
 
-    <h3>Prerequisites</h3>
+    <h3>Prerequisites for production</h3>
+
+    <ol>
+        <li>Copy <a href="boxsharp/boxsharp.min.js" download="boxsharp.min.js">boxsharp.min.js</a> to your web server.</li>
+        <li>Add the following to the <code>&lt;head&gt;</code> section of your HTML (using the appropriate location):<br>
+            <pre>&lt;script defer src="path/to/boxsharp.min.js" type="module"&gt;&lt;/script&gt;</pre>
+        </li>
+        <li>Proceed with <em>modern</em> or <em>classic</em> syntax.</li>
+    </ol>
+
+    <h3>Prerequisites for debug mode</h3>
 
     <ol>
         <li>Copy <a href="boxsharp/boxsharp.css" download="boxsharp.css">boxsharp.css</a> and <a href="boxsharp/boxsharp.js"
