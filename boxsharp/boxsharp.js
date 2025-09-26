@@ -114,6 +114,7 @@ user-select: none;
 }`);
         const container = document.createElement("div");
         const draggable = this.#draggable = document.createElement("img");
+        draggable.draggable = false;
         container.append(draggable);
         shadow.append(style, container);
 
@@ -563,6 +564,8 @@ class BoxsharpDialog extends HTMLElement {
     /** @type {HTMLIFrameElement} */
     #iframe;
     /** @type {HTMLElement} */
+    #unavailable;
+    /** @type {HTMLElement} */
     #figure;
     /** @type {HTMLElement} */
     #figcaption;
@@ -588,6 +591,7 @@ class BoxsharpDialog extends HTMLElement {
                     this.#image = /** @type {HTMLImageElement} */ (HTML("img")),
                     this.#video = /** @type {HTMLVideoElement} */ (HTML("video", { controls: true })),
                     this.#iframe = /** @type {HTMLIFrameElement} */ (HTML("iframe", { allow: "fullscreen" })),
+                    this.#unavailable = HTML("div", { className: "unavailable", textContent: "🖼️" }),
                     HTML("nav", { class: "pagination" },
                         this.#prevNav = HTML("a", { href: "#", className: "prev", ariaLabel: "←" }),
                         this.#nextNav = HTML("a", { href: "#", className: "next", ariaLabel: "→" }),
@@ -752,6 +756,8 @@ class BoxsharpDialog extends HTMLElement {
         iframe.classList.add("hidden");
         removeAttributes(iframe, ["src", "width", "height"]);
 
+        this.#unavailable.classList.add("hidden");
+
         const caption = this.#figcaption;
         caption.textContent = "";
         caption.removeAttribute("style");
@@ -831,22 +837,36 @@ class BoxsharpDialog extends HTMLElement {
         const { image, srcset, video, frame, width, height } = item;
         if (video.length) {
             const elem = this.#video;
-            const sources = video.map(source => {
-                /** @type{Object<string, string>} */
-                let attrs = { src: source.src };
-                if (source.type) {
-                    attrs.type = source.type;
-                }
-                return HTML("source", attrs);
-            });
-            elem.append(...sources);
-            elem.addEventListener("loadedmetadata", () => {
+            const onVideoLoaded = () => {
+                elem.removeEventListener("error", onVideoError);
                 elem.width = elem.videoWidth;
                 elem.height = elem.videoHeight;
                 this.#figcaption.style.width = `${elem.videoWidth}px`;
                 elem.classList.remove("hidden");
                 this.#show(item, showLoadingTimeout);
-            }, { once: true });
+            };
+            const onVideoError = () => {
+                elem.removeEventListener("loadedmetadata", onVideoLoaded);
+                this.#unavailable.classList.remove("hidden");
+                this.#show(item, showLoadingTimeout);
+            };
+            elem.addEventListener("loadedmetadata", onVideoLoaded, { once: true });
+            elem.addEventListener("error", onVideoError, { once: true });
+
+            if (video.length > 1) {
+                const sources = video.map(source => {
+                    /** @type{Object<string, string>} */
+                    let attrs = { src: source.src };
+                    if (source.type) {
+                        attrs.type = source.type;
+                    }
+                    return HTML("source", attrs);
+                });
+                elem.append(...sources);
+            } else {
+                elem.src = video[0].src;
+            }
+            elem.load();
         } else if (frame) {
             const elem = this.#iframe;
             elem.src = frame;
@@ -864,6 +884,10 @@ class BoxsharpDialog extends HTMLElement {
             const preloader = new Image();
             preloader.addEventListener("load", () => {
                 this.#image.classList.remove("hidden");
+                this.#show(item, showLoadingTimeout);
+            }, { once: true });
+            preloader.addEventListener("error", () => {
+                this.#unavailable.classList.remove("hidden");
                 this.#show(item, showLoadingTimeout);
             }, { once: true });
             if (!srcset.empty) {

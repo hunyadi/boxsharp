@@ -98,6 +98,11 @@ iframe {
     user-select: none;
 }
 
+div.unavailable {
+    font-size: 200px;
+    background-color: #f0f0f0;
+}
+
 figure>figcaption {
     box-sizing: border-box;
     max-width: 100%;
@@ -153,5 +158,5 @@ div.expander.expanded {
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
