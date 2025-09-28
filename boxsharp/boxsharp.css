@@ -134,6 +134,14 @@ figure>nav>.next:hover {
     opacity: 1;
 }
 
+@media (hover: none) and (pointer: coarse) {
+
+    figure>nav>.prev,
+    figure>nav>.next {
+        display: none;
+    }
+}
+
 div.expander {
     margin: 16px;
     padding: 4px;

@@ -66,6 +66,8 @@ function createStyle(css) {
 class BoxsharpDraggable extends HTMLElement {
     static observedAttributes = ["src"];
 
+    /** @type {HTMLDivElement} - The container that acts as the viewport. */
+    #container;
     /** @type {HTMLImageElement} - The image to pan. */
     #draggable;
 
@@ -76,19 +78,23 @@ class BoxsharpDraggable extends HTMLElement {
 
     /** @type {boolean} - True if a drag operation is in progress. */
     #isDragging = false;
-    /** @type {number} */
-    #startX = 0;
-    /** @type {number} */
-    #startY = 0;
-    /** @type {number} */
+    /** @type {number} - Horizontal coordinate for image position in viewport. */
     #posX = 0;
-    /** @type {number} */
+    /** @type {number} - Vertical coordinate for image position in viewport. */
     #posY = 0;
+    /** @type {number} - Horizontal coordinate in browser window for starting mouse/gesture event. */
+    #startX = 0;
+    /** @type {number} - Vertical coordinate in browser window for starting mouse/gesture event. */
+    #startY = 0;
 
     /** @type {(ev: MouseEvent) => void} */
     #mouseup;
     /** @type {(ev: MouseEvent) => void} */
     #mousemove;
+    /** @type {(ev: TouchEvent) => void} */
+    #touchend;
+    /** @type {(ev: TouchEvent) => void} */
+    #touchmove;
 
     connectedCallback() {
         const shadow = this.attachShadow({ mode: "open" });
@@ -103,6 +109,7 @@ overflow: hidden;
 width: 100%;
 height: 100%;
 cursor: grab;
+touch-action: none;
 }
 div:active {
 cursor: grabbing;
@@ -112,7 +119,7 @@ position: absolute;
 user-select: none;
 -webkit-user-drag: none;
 }`);
-        const container = document.createElement("div");
+        const container = this.#container = document.createElement("div");
         const draggable = this.#draggable = document.createElement("img");
         draggable.draggable = false;
         container.append(draggable);
@@ -120,47 +127,54 @@ user-select: none;
 
         this.#update();
 
+        // mouse movement event handlers
         container.addEventListener("mousedown", (ev) => {
             this.#isDragging = true;
-            this.#startX = ev.clientX;
-            this.#startY = ev.clientY;
+            this.#startX = ev.pageX;
+            this.#startY = ev.pageY;
         });
 
-        this.#mouseup = () => {
+        this.#mouseup = (ev) => {
             this.#isDragging = false;
-            const left = parseInt(draggable.style.left, 10);
-            const top = parseInt(draggable.style.top, 10);
-            this.#posX = left;
-            this.#posY = top;
+            this.#reposition(ev.pageX, ev.pageY);
         };
         document.addEventListener("mouseup", this.#mouseup);
 
         this.#mousemove = (ev) => {
-            if (!this.#isDragging) {
-                return;
+            if (this.#isDragging) {
+                this.#move(ev.pageX, ev.pageY);
             }
-
-            const dx = ev.clientX - this.#startX;
-            const dy = ev.clientY - this.#startY;
-
-            let newX = this.#posX + dx;
-            let newY = this.#posY + dy;
-
-            const parentRect = container.getBoundingClientRect();
-            const childRect = draggable.getBoundingClientRect();
-
-            const maxOffsetX = 0;
-            const maxOffsetY = 0;
-            const minOffsetX = parentRect.width - childRect.width;
-            const minOffsetY = parentRect.height - childRect.height;
-
-            newX = Math.min(maxOffsetX, Math.max(minOffsetX, newX));
-            newY = Math.min(maxOffsetY, Math.max(minOffsetY, newY));
-
-            draggable.style.left = `${newX}px`;
-            draggable.style.top = `${newY}px`;
         };
         document.addEventListener("mousemove", this.#mousemove);
+
+        // gesture event handlers
+        container.addEventListener("touchstart", (ev) => {
+            if (ev.touches.length === 1) {
+                this.#isDragging = true;
+                const touches = ev.touches;
+                this.#startX = touches[0].pageX;
+                this.#startY = touches[0].pageY;
+            }
+        });
+
+        this.#touchend = (ev) => {
+            if (this.#isDragging) {
+                this.#isDragging = false;
+                const touches = ev.changedTouches;
+                if (touches.length === 1) {
+                    this.#reposition(touches[0].pageX, touches[0].pageY);
+                }
+            }
+        };
+        document.addEventListener("touchend", this.#touchend);
+
+        this.#touchmove = (ev) => {
+            if (this.#isDragging && ev.touches.length === 1) {
+                const touches = ev.touches;
+                this.#move(touches[0].pageX, touches[0].pageY);
+            }
+        };
+        document.addEventListener("touchmove", this.#touchmove);
     }
 
     disconnectedCallback() {
@@ -170,6 +184,8 @@ user-select: none;
 
         document.removeEventListener("mouseup", this.#mouseup);
         document.removeEventListener("mousemove", this.#mousemove);
+        document.removeEventListener("touchend", this.#touchend);
+        document.removeEventListener("touchmove", this.#touchmove);
     }
 
     /**
@@ -194,6 +210,50 @@ user-select: none;
                 }
                 break;
         }
+    }
+
+    /**
+     * Fired on moving the mouse or performing a gesture.
+     *
+     * @param {number} absX - Horizontal coordinate for mouse or touch position, in event coordinates.
+     * @param {number} absY - Vertical coordinate for mouse or touch position, in event coordinates.
+     * @returns {{ x: number; y: number; }}
+     */
+    #move(absX, absY) {
+        const deltaX = absX - this.#startX;
+        const deltaY = absY - this.#startY;
+
+        let newX = this.#posX + deltaX;
+        let newY = this.#posY + deltaY;
+
+        const draggable = this.#draggable;
+        const parentRect = this.#container.getBoundingClientRect();
+        const childRect = draggable.getBoundingClientRect();
+
+        const maxOffsetX = 0;
+        const maxOffsetY = 0;
+        const minOffsetX = parentRect.width - childRect.width;
+        const minOffsetY = parentRect.height - childRect.height;
+
+        newX = Math.min(maxOffsetX, Math.max(minOffsetX, newX));
+        newY = Math.min(maxOffsetY, Math.max(minOffsetY, newY));
+
+        draggable.style.transform = `translate(${newX}px, ${newY}px)`;
+
+        return { x: newX, y: newY };
+    }
+
+    /**
+     * Fired on lifting the mouse button or finishing a gesture.
+     *
+     * @param {number} absX - Horizontal coordinate for mouse or touch position, in event coordinates.
+     * @param {number} absY - Vertical coordinate for mouse or touch position, in event coordinates.
+     * @returns {void}
+     */
+    #reposition(absX, absY) {
+        const { x, y } = this.#move(absX, absY);
+        this.#posX = x;
+        this.#posY = y;
     }
 
     /**
@@ -229,8 +289,7 @@ user-select: none;
         draggable.src = this.getAttribute("src") || "";
         this.style.width = draggable.style.width = `${this.#width}px`;
         this.style.height = draggable.style.height = `${this.#height}px`;
-        draggable.style.left = "0";
-        draggable.style.top = "0";
+        draggable.style.transform = "none";
     }
 }
 
@@ -621,8 +680,8 @@ class BoxsharpDialog extends HTMLElement {
         const image = this.#image;
         const expander = this.#expander;
         const clickCallback = () => {
-            if (this.#expandable()) {
-                this.#expand(expander.classList.toggle("expanded"));
+            if (this.#isExpandable()) {
+                this.#expand(!this.#isExpanded());
             }
         };
         expander.addEventListener("click", clickCallback);
@@ -688,19 +747,21 @@ class BoxsharpDialog extends HTMLElement {
         let startX = 0;
         let endX = 0;
         backdrop.addEventListener("touchstart", (ev) => {
-            startX = ev.touches[0].clientX;
-            console.log(startX);
+            startX = ev.touches[0].pageX;
         });
         backdrop.addEventListener("touchend", (ev) => {
             const threshold = 50;  // minimum distance in CSS pixels to count as a swipe
-            endX = ev.changedTouches[0].clientX;
-            if (endX - startX > threshold) {  // swiped right
-                if (isVisible(this.#prevNav)) {
-                    this.prev();
-                }
-            } else if (startX - endX > threshold) {  // swiped left
-                if (isVisible(this.#nextNav)) {
-                    this.next();
+            endX = ev.changedTouches[0].pageX;
+
+            if (!this.#isExpanded()) {
+                if (endX - startX > threshold) {  // swiped right
+                    if (isVisible(this.#prevNav)) {
+                        this.prev();
+                    }
+                } else if (startX - endX > threshold) {  // swiped left
+                    if (isVisible(this.#nextNav)) {
+                        this.next();
+                    }
                 }
             }
         });
@@ -708,13 +769,13 @@ class BoxsharpDialog extends HTMLElement {
         // update whether expander icon is visible when container size changes
         let lastSrc;
         const imageObserver = new ResizeObserver(() => {
-            if (expander.classList.contains("expanded")) {
+            if (this.#isExpanded()) {
                 return;
             }
 
             if (image.currentSrc !== lastSrc) {
                 lastSrc = image.currentSrc;
-                expander.classList.toggle("hidden", !this.#expandable());
+                expander.classList.toggle("hidden", !this.#isExpandable());
             }
         });
         imageObserver.observe(this.#figure);
@@ -959,7 +1020,7 @@ class BoxsharpDialog extends HTMLElement {
     /**
      * Update the state of the image magnifier.
      *
-     * @param {boolean} isExpanded
+     * @param {boolean} isExpanded - The new expanded state.
      */
     #expand(isExpanded) {
         const image = this.#image;
@@ -990,11 +1051,20 @@ class BoxsharpDialog extends HTMLElement {
     }
 
     /**
+     * Determines whether the image is currently magnified.
+     *
+     * @returns {boolean}
+     */
+    #isExpanded() {
+        return this.#expander.classList.contains("expanded");
+    }
+
+    /**
      * Determines whether the image is magnifiable.
      *
      * @returns {boolean}
      */
-    #expandable() {
+    #isExpandable() {
         const image = this.#image;
         let largestSrc = image.currentSrc;
         if (image.srcset) {
