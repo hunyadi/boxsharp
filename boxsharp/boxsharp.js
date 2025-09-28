@@ -384,9 +384,9 @@ class BoxsharpItem {
     height;
 
     /**
-     * Extracts the caption text from a HTML `<figure>` element.
+     * Extracts the caption text from an encapsulating or encapsulated HTML `<figure>` element, or the element itself.
      *
-     * @param {HTMLElement} elem - Element used for locating the figure.
+     * @param {HTMLElement} elem - Element used for locating the `<figure>` element.
      * @returns {?string} - Caption text as raw HTML.
      */
     static #getCaption(elem) {
@@ -579,6 +579,8 @@ class BoxsharpDialog extends HTMLElement {
     #draggable;
     /** @type {HTMLElement} */
     #expander;
+    /** @type {ResizeObserver} */
+    #sizeObserver;
 
     connectedCallback() {
         const shadow = this.attachShadow({ mode: "open" });
@@ -602,6 +604,12 @@ class BoxsharpDialog extends HTMLElement {
                 this.#progress = HTML("div", { className: "progress" }),
             )
         );
+
+        this.#sizeObserver = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                this.#figcaption.style.width = `${entry.contentBoxSize[0].inlineSize}px`;
+            }
+        });
 
         this.reset();
         this.#backdrop.addEventListener("click", (ev) => {
@@ -699,7 +707,7 @@ class BoxsharpDialog extends HTMLElement {
 
         // update whether expander icon is visible when container size changes
         let lastSrc;
-        const observer = new ResizeObserver(() => {
+        const imageObserver = new ResizeObserver(() => {
             if (expander.classList.contains("expanded")) {
                 return;
             }
@@ -709,7 +717,7 @@ class BoxsharpDialog extends HTMLElement {
                 expander.classList.toggle("hidden", !this.#expandable());
             }
         });
-        observer.observe(this.#figure);
+        imageObserver.observe(this.#figure);
     }
 
     disconnectedCallback() {
@@ -722,6 +730,8 @@ class BoxsharpDialog extends HTMLElement {
      * @returns {void}
      */
     reset() {
+        this.#sizeObserver.disconnect();
+
         const backdrop = this.#backdrop;
         backdrop.classList.add("hidden");
         backdrop.classList.remove("fade-in");
@@ -836,22 +846,21 @@ class BoxsharpDialog extends HTMLElement {
 
         const { image, srcset, video, frame, width, height } = item;
         if (video.length) {
-            const elem = this.#video;
+            const videoElement = this.#video;
             const onVideoLoaded = () => {
-                elem.removeEventListener("error", onVideoError);
-                elem.width = elem.videoWidth;
-                elem.height = elem.videoHeight;
-                this.#figcaption.style.width = `${elem.videoWidth}px`;
-                elem.classList.remove("hidden");
+                videoElement.removeEventListener("error", onVideoError);
+                videoElement.width = videoElement.videoWidth;
+                videoElement.height = videoElement.videoHeight;
+                videoElement.classList.remove("hidden");
                 this.#show(item, showLoadingTimeout);
             };
             const onVideoError = () => {
-                elem.removeEventListener("loadedmetadata", onVideoLoaded);
+                videoElement.removeEventListener("loadedmetadata", onVideoLoaded);
                 this.#unavailable.classList.remove("hidden");
                 this.#show(item, showLoadingTimeout);
             };
-            elem.addEventListener("loadedmetadata", onVideoLoaded, { once: true });
-            elem.addEventListener("error", onVideoError, { once: true });
+            videoElement.addEventListener("loadedmetadata", onVideoLoaded, { once: true });
+            videoElement.addEventListener("error", onVideoError, { once: true });
 
             if (video.length > 1) {
                 const sources = video.map(source => {
@@ -862,22 +871,22 @@ class BoxsharpDialog extends HTMLElement {
                     }
                     return HTML("source", attrs);
                 });
-                elem.append(...sources);
+                videoElement.append(...sources);
             } else {
-                elem.src = video[0].src;
+                videoElement.src = video[0].src;
             }
-            elem.load();
+            videoElement.load();
         } else if (frame) {
-            const elem = this.#iframe;
-            elem.src = frame;
+            const frameElement = this.#iframe;
+            frameElement.src = frame;
             if (width) {
-                elem.width = width + "";
+                frameElement.width = width + "";
             }
             if (height) {
-                elem.height = height + "";
+                frameElement.height = height + "";
             }
-            elem.addEventListener("load", () => {
-                elem.classList.remove("hidden");
+            frameElement.addEventListener("load", () => {
+                frameElement.classList.remove("hidden");
                 this.#show(item, showLoadingTimeout);
             }, { once: true });
         } else if (image || !srcset.empty) {
@@ -932,6 +941,15 @@ class BoxsharpDialog extends HTMLElement {
             this.#figcaption.innerHTML = caption;
         }
 
+        const videoElement = this.#video;
+        if (isVisible(videoElement)) {
+            this.#sizeObserver.observe(videoElement);
+        }
+        const imageElement = this.#image;
+        if (isVisible(imageElement)) {
+            this.#sizeObserver.observe(imageElement);
+        }
+
         // trigger transition to full size
         requestAnimationFrame(() => {
             this.#figure.classList.remove("zoom-in");
@@ -947,10 +965,13 @@ class BoxsharpDialog extends HTMLElement {
         const image = this.#image;
         const draggable = this.#draggable;
         const expander = this.#expander;
+        const observer = this.#sizeObserver;
 
         expander.classList.toggle("expanded", isExpanded);
 
         if (isExpanded) {
+            observer.disconnect();
+
             expander.classList.remove("hidden");
             image.classList.add("hidden");
             const srcset = ImageSourceSet.parse(this.#image.srcset);
@@ -958,10 +979,13 @@ class BoxsharpDialog extends HTMLElement {
                 draggable.setAttribute("src", srcset.highest());
             }
             draggable.classList.remove("hidden");
+            this.#figcaption.removeAttribute("style");
         } else {
             draggable.classList.add("hidden");
             draggable.removeAttribute("src");
             image.classList.remove("hidden");
+
+            observer.observe(image);
         }
     }
 
