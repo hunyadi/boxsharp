@@ -93,7 +93,6 @@ video,
 iframe {
     box-sizing: border-box;
     max-width: 100%;
-    max-height: calc(100vh - 3em);
     object-fit: contain;
     user-select: none;
 }
@@ -143,21 +142,21 @@ figure>nav>.next:hover {
 }
 
 div.expander {
-    margin: 16px;
-    padding: 4px;
-    border-radius: 8px;
+    margin: 12px;
+    padding: 12px;
+    border-radius: 10px;
     position: absolute;
     top: 0;
     right: 0;
     width: 24px;
     height: 24px;
     background: rgba(0, 0, 0, .5) 50% no-repeat;
-    background-size: 18px 18px;
+    background-size: 32px 32px;
     background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M2 2v7h2V5.406L8.594 10 10 8.594 5.406 4H9V2H2zm13 0v2h3.594L14 8.594 15.406 10 20 5.406V9h2V2h-7zM8.594 14L4 18.594V15H2v7h7v-2H5.406L10 15.406 8.594 14zm6.812 0L14 15.406 18.594 20H15v2h7v-7h-2v3.594L15.406 14z' fill='%23fff'/%3E%3C/svg%3E")
 }
 
 div.expander:hover {
-    background-size: 24px 24px;
+    background-size: 40px 40px;
 }
 
 div.expander.expanded {

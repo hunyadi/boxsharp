@@ -664,9 +664,21 @@ class BoxsharpDialog extends HTMLElement {
             )
         );
 
+        const figure = this.#figure;
         this.#sizeObserver = new ResizeObserver((entries) => {
             for (const entry of entries) {
-                this.#figcaption.style.width = `${entry.contentBoxSize[0].inlineSize}px`;
+                const sourceWidth = entry.contentBoxSize[0].inlineSize;
+                this.#figcaption.style.width = `${sourceWidth}px`;
+
+                if (figure.scrollHeight > figure.clientHeight) {
+                    // decrease image or video size if it leads to overflow in container
+                    const factor = figure.clientHeight / figure.scrollHeight;
+                    const targetWidth = Math.floor(sourceWidth * factor);
+                    if (targetWidth > 100 && targetWidth != sourceWidth) {
+                        const target = /** @type {HTMLElement} */ (entry.target);
+                        target.style.width = `${targetWidth}px`;
+                    }
+                }
             }
         });
 
@@ -809,7 +821,7 @@ class BoxsharpDialog extends HTMLElement {
 
         const image = this.#image;
         image.classList.add("hidden");
-        removeAttributes(image, ["src", "srcset", "sizes", "alt"]);
+        removeAttributes(image, ["src", "srcset", "sizes", "alt", "style"]);
 
         const draggable = this.#draggable;
         draggable.classList.add("hidden");
@@ -820,7 +832,7 @@ class BoxsharpDialog extends HTMLElement {
         video.pause();
         video.currentTime = 0;
         video.textContent = "";
-        removeAttributes(video, ["src", "poster", "width", "height"]);
+        removeAttributes(video, ["src", "poster", "width", "height", "style"]);
         video.load();
 
         const iframe = this.#iframe;
@@ -984,17 +996,18 @@ class BoxsharpDialog extends HTMLElement {
         clearTimeout(showLoadingTimeout);
         this.#progress.classList.add("hidden");
 
+        const imageElement = this.#image;
+        const videoElement = this.#video;
         if (image || !srcset.empty) {
-            const elem = this.#image;
             if (!srcset.empty) {
-                elem.srcset = srcset.toString();
-                elem.sizes = srcset.toClampedSizes();
+                imageElement.srcset = srcset.toString();
+                imageElement.sizes = srcset.toClampedSizes();
             } else if (image) {
-                elem.src = image;
+                imageElement.src = image;
             }
 
             if (alt) {
-                elem.alt = alt;
+                imageElement.alt = alt;
             }
         }
 
@@ -1002,13 +1015,11 @@ class BoxsharpDialog extends HTMLElement {
             this.#figcaption.innerHTML = caption;
         }
 
-        const videoElement = this.#video;
-        if (isVisible(videoElement)) {
-            this.#sizeObserver.observe(videoElement);
-        }
-        const imageElement = this.#image;
         if (isVisible(imageElement)) {
             this.#sizeObserver.observe(imageElement);
+        }
+        if (isVisible(videoElement)) {
+            this.#sizeObserver.observe(videoElement);
         }
 
         // trigger transition to full size
