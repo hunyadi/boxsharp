@@ -136,8 +136,8 @@
 
     <h3>Display a single image</h3>
 
-    <p>This example uses the web component syntax to activate a pop-up window when the user clicks a thumbnail image. Information on which image to show for
-        what screen size is extracted from the <code>srcset</code> attribute of the <code>&lt;img&gt;</code> element. Note the use of <code>sizes</code>, which
+    <p>Below, we use the web component syntax to activate a pop-up window when the user clicks a thumbnail image. Information on which image to show for what
+        screen size is extracted from the <code>srcset</code> attribute of the <code>&lt;img&gt;</code> element. Note the use of <code>sizes</code>, which
         ensures that the browser doesn't load a high-resolution image for the thumbnail itself. Click the expand icon in the top right corner of the pop-up
         window to display the largest image in the source set, press and hold the mouse button, and move the mouse to pan the image.
     </p>
@@ -164,6 +164,49 @@
         <a rel="boxsharp-flag"
             data-srcset="https://placehold.co/3600x2400/436F4D/FFFFFF.png 3600w, https://placehold.co/2400x1600/436F4D/FFFFFF.png 2400w, https://placehold.co/1500x1000/436F4D/FFFFFF.png 1500w, https://placehold.co/1200x800/436F4D/FFFFFF.png 1200w, https://placehold.co/900x600/436F4D/FFFFFF.png 900w, https://placehold.co/600x400/436F4D/FFFFFF.png 600w, https://placehold.co/300x200/436F4D/FFFFFF.png 300w">
             <img src="https://placehold.co/300x200/436F4D/FFFFFF.png" width="75" height="50" alt="A green image" /></a>
+    </div>
+
+    <h3>Navigable gallery with options</h3>
+
+    <p>In the next example, we group related images into a single collection with the <code>group</code> attribute. The HTML element
+        <code>&lt;boxsharp-link&gt;</code> can also take custom attributes, which are translated into display options. For example, <code>loop</code> displays
+        navigation arrows even for the first and last member of the collection, which jump to the last and first member, respectively. If you have a group of
+        related images, the custom attributes must be applied to the first <code>&lt;boxsharp-link&gt;</code> element.
+    </p>
+
+    <div class="example">
+        <boxsharp-link group="flag" loop="true"
+            srcset="https://placehold.co/3600x2400/CD2A3E/FFFFFF.png 3600w, https://placehold.co/2400x1600/CD2A3E/FFFFFF.png 2400w, https://placehold.co/1500x1000/CD2A3E/FFFFFF.png 1500w, https://placehold.co/1200x800/CD2A3E/FFFFFF.png 1200w, https://placehold.co/900x600/CD2A3E/FFFFFF.png 900w, https://placehold.co/600x400/CD2A3E/FFFFFF.png 600w, https://placehold.co/300x200/CD2A3E/FFFFFF.png 300w">
+            <img src="https://placehold.co/300x200/CD2A3E/FFFFFF.png" width="75" height="50" alt="A red image" />
+        </boxsharp-link>
+        <boxsharp-link group="flag"
+            srcset="https://placehold.co/3600x2400/FFFFFF/CCCCCC.png 3600w, https://placehold.co/2400x1600/FFFFFF/CCCCCC.png 2400w, https://placehold.co/1500x1000/FFFFFF/CCCCCC.png 1500w, https://placehold.co/1200x800/FFFFFF/CCCCCC.png 1200w, https://placehold.co/900x600/FFFFFF/CCCCCC.png 900w, https://placehold.co/600x400/FFFFFF/CCCCCC.png 600w, https://placehold.co/300x200/FFFFFF/CCCCCC.png 300w">
+            <img src="https://placehold.co/300x200/FFFFFF/CCCCCC.png" width="75" height="50" alt="A white image" />
+        </boxsharp-link>
+        <boxsharp-link group="flag"
+            srcset="https://placehold.co/3600x2400/436F4D/FFFFFF.png 3600w, https://placehold.co/2400x1600/436F4D/FFFFFF.png 2400w, https://placehold.co/1500x1000/436F4D/FFFFFF.png 1500w, https://placehold.co/1200x800/436F4D/FFFFFF.png 1200w, https://placehold.co/900x600/436F4D/FFFFFF.png 900w, https://placehold.co/600x400/436F4D/FFFFFF.png 600w, https://placehold.co/300x200/436F4D/FFFFFF.png 300w">
+            <img src="https://placehold.co/300x200/436F4D/FFFFFF.png" width="75" height="50" alt="A green image" />
+        </boxsharp-link>
+    </div>
+
+    <h3>Media queries</h3>
+
+    <p>If a <code>&lt;boxsharp-link&gt;</code> element contains <code>&lt;source&gt;</code> elements as direct children, you can use <a
+            href="https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_media_queries/Using_media_queries">media queries</a>. The first item is selected that
+        matches the document media when the pop-up window opens. The browser skips <code>&lt;source&gt;</code> elements, and shows the remaining contents of
+        <code>&lt;boxsharp-link&gt;</code> when the page is displayed.
+    </p>
+
+    <div class="example">
+        <boxsharp-link>
+            <source media="(max-width: 600px)"
+                srcset="https://placehold.co/900x600/CD2A3E/FFFFFF.png 900w, https://placehold.co/600x400/CD2A3E/FFFFFF.png 600w, https://placehold.co/300x200/CD2A3E/FFFFFF.png 300w">
+            <source media="(orientation: portrait)"
+                srcset="https://placehold.co/900x600/FFFFFF/CCCCCC.png 900w, https://placehold.co/600x400/FFFFFF/CCCCCC.png 600w, https://placehold.co/300x200/FFFFFF/CCCCCC.png 300w">
+            <source
+                srcset="https://placehold.co/900x600/436F4D/FFFFFF.png 900w, https://placehold.co/600x400/436F4D/FFFFFF.png 600w, https://placehold.co/300x200/436F4D/FFFFFF.png 300w">
+            <img src="https://placehold.co/300x200/FFFFFF/CCCCCC.png" width="75" height="50" alt="A change of colors" />
+        </boxsharp-link>
     </div>
 
     <h3>Figures</h3>
@@ -290,8 +333,8 @@
 
     <h3>PDF</h3>
 
-    <p>Notice how the following link to a PDF document contains <a href="https://www.rfc-editor.org/rfc/rfc3778#section-3">parameters how to show the PDF</a>,
-        which is passed in the URL fragment.</p>
+    <p><a href="https://www.rfc-editor.org/rfc/rfc3778#section-3">PDF-open</a> parameters allow us to customize the appearance of a PDF document shown in the
+        pop-up window. Notice how the following link to a PDF document contains key-value parameters in the URL fragment how to display the PDF.</p>
 
     <div class="example">
         <boxsharp-link width="800" height="600"
@@ -301,6 +344,8 @@
     </div>
 
     <h3>Unavailable resource</h3>
+
+    <p>When a linked resource is not available, a placeholder emoji (picture in a frame) is shown.</p>
 
     <p>
         <boxsharp-link href="https://google.com/image.jpeg">

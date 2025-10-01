@@ -6,7 +6,7 @@
 
 python minify.py
 if errorlevel 1 goto error
-call terser boxsharp\boxsharp.sub.js -o boxsharp\boxsharp.min.js --ecma 2020 --module --compress --mangle
+call terser boxsharp\boxsharp.sub.js -o boxsharp\boxsharp.min.js --ecma 2020 --module --compress passes=2 --mangle
 if errorlevel 1 goto error
 del boxsharp\boxsharp.sub.js
 

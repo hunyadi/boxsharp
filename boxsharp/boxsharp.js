@@ -135,13 +135,17 @@ user-select: none;
         });
 
         this.#mouseup = (ev) => {
-            this.#isDragging = false;
-            this.#reposition(ev.pageX, ev.pageY);
+            if (this.#isDragging) {
+                ev.preventDefault();
+                this.#isDragging = false;
+                this.#reposition(ev.pageX, ev.pageY);
+            }
         };
         document.addEventListener("mouseup", this.#mouseup);
 
         this.#mousemove = (ev) => {
             if (this.#isDragging) {
+                ev.preventDefault();
                 this.#move(ev.pageX, ev.pageY);
             }
         };
@@ -159,6 +163,7 @@ user-select: none;
 
         this.#touchend = (ev) => {
             if (this.#isDragging) {
+                ev.preventDefault();
                 this.#isDragging = false;
                 const touches = ev.changedTouches;
                 if (touches.length === 1) {
@@ -170,11 +175,16 @@ user-select: none;
 
         this.#touchmove = (ev) => {
             if (this.#isDragging && ev.touches.length === 1) {
+                ev.preventDefault();
                 const touches = ev.touches;
                 this.#move(touches[0].pageX, touches[0].pageY);
             }
         };
         document.addEventListener("touchmove", this.#touchmove);
+    }
+
+    connectedMoveCallback() {
+        // nothing to do
     }
 
     disconnectedCallback() {
@@ -286,7 +296,7 @@ user-select: none;
         this.#posY = 0;
 
         const draggable = this.#draggable;
-        draggable.src = this.getAttribute("src") || "";
+        draggable.src = this.getAttribute("src") ?? "";
         this.style.width = draggable.style.width = `${this.#width}px`;
         this.style.height = draggable.style.height = `${this.#height}px`;
         draggable.style.transform = "none";
@@ -296,7 +306,7 @@ user-select: none;
 /**
  * Represents a single item in the `srcset` attribute of an `<img>` element.
  */
-class ImageSource {
+class ImageSourceItem {
     /** @type {string} */
     url;
     /** @type {number} */
@@ -314,7 +324,7 @@ class ImageSource {
     /**
      * Allows this class to be used with `sort`.
      *
-     * @param {ImageSource} op - The item to compare against.
+     * @param {ImageSourceItem} op - The item to compare against.
      * @returns {number}
      */
     compare(op) {
@@ -326,15 +336,8 @@ class ImageSource {
  * Represents a parsed `srcset` attribute acquired from an `<img>` element.
  */
 class ImageSourceSet {
-    /** @type {ImageSource[]} */
+    /** @type {ImageSourceItem[]} */
     items;
-
-    /**
-     * @param {ImageSource[]} items
-     */
-    constructor(items) {
-        this.items = items;
-    }
 
     /**
      * @returns {boolean} - True if the source set is empty.
@@ -384,23 +387,67 @@ class ImageSourceSet {
      * Create a source set from a string.
      *
      * @param {string} srcset - `srcset` attribute value.
-     * @returns {ImageSourceSet}
+     * @returns {?ImageSourceSet}
      */
     static parse(srcset) {
-        /** @type {ImageSource[]} */
+        /** @type {ImageSourceItem[]} */
         let items = [];
         const regexp = /(\S+)\s+(\d+)w(?:,|$)/g;
         let match;
         while ((match = regexp.exec(srcset)) !== null) {
-            items.push(new ImageSource(match[1], parseInt(match[2])));
+            items.push(new ImageSourceItem(match[1], parseInt(match[2])));
         }
+
+        // sort descending, largest width first
+        items.sort((a, b) => b.compare(a));
+
         if (items.length) {
-            // sort descending, largest width first
-            items.sort((a, b) => b.compare(a));
+            const obj = new ImageSourceSet();
+            obj.items = items;
+            return obj;
+        } else {
+            return null;
         }
-        return new ImageSourceSet(items);
+    }
+
+    /**
+     * Extracts and parses the value of the `srcset` attribute.
+     *
+     * @param {Element} elem - The HTML element to inspect.
+     * @returns {?ImageSourceSet} - The extracted source set, or `null`.
+     */
+    static extract(elem) {
+        const value = elem.getAttribute("srcset");
+        if (value) {
+            const srcset = ImageSourceSet.parse(value);
+            if (srcset) {
+                return srcset;
+            }
+        }
+        return null;
     }
 }
+
+class ImageSource {
+    /** @type {ImageSourceSet} - Source URLs acquired from the `srcset` attribute value of an image. */
+    srcset = new ImageSourceSet();
+    /** @type {string | undefined} - MIME media type with optional codecs parameter. */
+    type;
+    /** @type {string | undefined} - Media query for the resource's intended media. */
+    media;
+
+    /**
+     * @param {ImageSourceSet} srcset
+     * @param {string} [type]
+     * @param {string} [media]
+     */
+    constructor(srcset, type, media) {
+        this.srcset = srcset;
+        this.type = type;
+        this.media = media;
+    }
+}
+
 
 /**
  * Source URL and media type pairs captured by the HTML `source` element.
@@ -408,12 +455,14 @@ class ImageSourceSet {
 class VideoSource {
     /** @type {string} - Media source URL. */
     src;
-    /** @type {?string} - Media type. */
+    /** @type {string | undefined} - MIME media type with optional codecs parameter. */
     type;
+    /** @type {string | undefined} - Media query for the resource's intended media. */
+    media;
 
     /**
      * @param {string} src
-     * @param {?string} type
+     * @param {string} [type]
      */
     constructor(src, type) {
         this.src = src;
@@ -425,32 +474,32 @@ class VideoSource {
  * Captures properties associated with an item to display.
  */
 class BoxsharpItem {
-    /** @type {?string} - `src` attribute value for an image, or `poster` attribute value for a video. */
+    /** @type {string | undefined} - `src` attribute value for an image, or `poster` attribute value for a video. */
     image;
-    /** @type {ImageSourceSet} - Source URLs acquired from the `srcset` attribute value of an image. */
-    srcset = new ImageSourceSet([]);
+    /** @type {ImageSource[]} - Source URLs acquired from the `srcset` attribute value of an image. */
+    source = [];
     /** @type {VideoSource[]} - Source URL and media type pairs for a video. */
     video = [];
-    /** @type {?string} - `src` attribute value for a frame. */
+    /** @type {string | undefined} - `src` attribute value for a frame. */
     frame;
-    /** @type {?string} - Alternate text for the image or video. */
+    /** @type {string | undefined} - Alternate text for the image or video. */
     alt;
-    /** @type {?string} - HTML shown below the image or video as a figure caption. */
+    /** @type {string | undefined} - HTML shown below the image or video as a figure caption. */
     caption;
-    /** @type {?number} - Intrinsic width of the content in CSS pixels, `null` to auto-detect. */
+    /** @type {number | undefined} - Intrinsic width of the content in CSS pixels, `undefined` to auto-detect. */
     width;
-    /** @type {?number} - Intrinsic height of the content in CSS pixels, `null` to auto-detect. */
+    /** @type {number | undefined} - Intrinsic height of the content in CSS pixels, `undefined` to auto-detect. */
     height;
 
     /**
      * Extracts the caption text from an encapsulating or encapsulated HTML `<figure>` element, or the element itself.
      *
      * @param {HTMLElement} elem - Element used for locating the `<figure>` element.
-     * @returns {?string} - Caption text as raw HTML.
+     * @returns {string | undefined} - Caption text as raw HTML.
      */
     static #getCaption(elem) {
-        /** @type {?string} */
-        let caption = null;
+        /** @type {string | undefined} */
+        let caption;
 
         let figure = elem.querySelector("figure");  // element wraps `<figure>`
         if (!figure) {
@@ -485,16 +534,16 @@ class BoxsharpItem {
             throw new Error("expected: either `a` or `boxsharp-link` element");
         }
 
-        /** @type {?string} */
-        let imageURL = null;
-        /** @type {ImageSourceSet} */
-        let srcset = new ImageSourceSet([]);
-        /** @type {?string} */
-        let videoURL = null;
-        /** @type {?string} */
-        let frameURL = null;
-        /** @type {?string} */
-        let alt = null;
+        /** @type {string | undefined} */
+        let imageURL;
+        /** @type {?ImageSourceSet} */
+        let srcset = null;
+        /** @type {string | undefined} */
+        let videoURL;
+        /** @type {string | undefined} */
+        let frameURL;
+        /** @type {string | undefined} */
+        let alt;
 
         const thumbnail = anchor.querySelector("img");
         if (thumbnail) {
@@ -507,7 +556,7 @@ class BoxsharpItem {
             srcset = ImageSourceSet.parse(anchor.dataset.srcset);
         }
 
-        if (!imageURL && !srcset.empty) {
+        if (!imageURL && srcset) {
             imageURL = srcset.lowest();
         }
 
@@ -529,9 +578,11 @@ class BoxsharpItem {
 
         const item = new BoxsharpItem();
         item.image = imageURL;
-        item.srcset = srcset;
+        if (srcset) {
+            item.source.push(new ImageSource(srcset));
+        }
         if (videoURL) {
-            item.video.push(new VideoSource(videoURL, null));
+            item.video.push(new VideoSource(videoURL));
         }
         item.frame = frameURL;
         item.alt = alt;
@@ -563,7 +614,7 @@ class BoxsharpItem {
             sources.push(new VideoSource(source.src, source.type));
         });
         if (!sources.length && elem.src) {
-            sources.push(new VideoSource(elem.src, null));
+            sources.push(new VideoSource(elem.src));
         }
 
         const item = new BoxsharpItem();
@@ -572,6 +623,27 @@ class BoxsharpItem {
         item.caption = this.#getCaption(elem);
         return item;
     }
+}
+
+/**
+ * Finds the image source whose media query currently matches the document.
+ *
+ * @param {ImageSource[]} sources
+ * @returns {ImageSource | null}
+ */
+function matchMedia(sources) {
+    for (const source of sources) {
+        const media = source.media;
+        if (media) {
+            const query = window.matchMedia(media);
+            if (query.matches) {
+                return source;
+            }
+        } else {
+            return source;
+        }
+    }
+    return null;
 }
 
 /**
@@ -597,7 +669,7 @@ function HTML(tag, props = {}, ...children) {
     return element;
 };
 
-class BoxsharpOptions {
+class BoxsharpDialogOptions {
     /** @type {boolean} - Whether to show the *previous* navigation button. */
     prev;
     /** @type {boolean} - Whether to show the *next* navigation button. */
@@ -793,6 +865,10 @@ class BoxsharpDialog extends HTMLElement {
         imageObserver.observe(this.#figure);
     }
 
+    connectedMoveCallback() {
+        // nothing to do
+    }
+
     disconnectedCallback() {
         document.removeEventListener("keydown", this.#keydownCallback);
     }
@@ -898,7 +974,7 @@ class BoxsharpDialog extends HTMLElement {
      * Loads resources to be shown in the lightbox pop-up window.
      *
      * @param {BoxsharpItem} item - Captures properties associated with an item to display.
-     * @param {BoxsharpOptions} options - Configures the appearance of the pop-up window.
+     * @param {BoxsharpDialogOptions} options - Configures the appearance of the pop-up window.
      * @returns {void}
      */
     open(item, options) {
@@ -917,7 +993,7 @@ class BoxsharpDialog extends HTMLElement {
             this.#progress.classList.remove("hidden");
         }, 500);
 
-        const { image, srcset, video, frame, width, height } = item;
+        const { image, source, video, frame, width, height } = item;
         if (video.length) {
             const videoElement = this.#video;
             const onVideoLoaded = () => {
@@ -962,7 +1038,7 @@ class BoxsharpDialog extends HTMLElement {
                 frameElement.classList.remove("hidden");
                 this.#show(item, showLoadingTimeout);
             }, { once: true });
-        } else if (image || !srcset.empty) {
+        } else if (image || source.length) {
             const preloader = new Image();
             preloader.addEventListener("load", () => {
                 this.#image.classList.remove("hidden");
@@ -972,9 +1048,11 @@ class BoxsharpDialog extends HTMLElement {
                 this.#unavailable.classList.remove("hidden");
                 this.#show(item, showLoadingTimeout);
             }, { once: true });
-            if (!srcset.empty) {
-                preloader.srcset = srcset.toString();
-                preloader.sizes = srcset.toClampedSizes();
+
+            const imageSource = matchMedia(source);
+            if (imageSource) {
+                preloader.srcset = imageSource.srcset.toString();
+                preloader.sizes = imageSource.srcset.toClampedSizes();
             } else if (image) {
                 preloader.src = image;
             }
@@ -991,17 +1069,18 @@ class BoxsharpDialog extends HTMLElement {
      * @returns {void}
      */
     #show(item, showLoadingTimeout) {
-        const { image, srcset, alt, caption } = item;
+        const { image, source, alt, caption } = item;
 
         clearTimeout(showLoadingTimeout);
         this.#progress.classList.add("hidden");
 
         const imageElement = this.#image;
         const videoElement = this.#video;
-        if (image || !srcset.empty) {
-            if (!srcset.empty) {
-                imageElement.srcset = srcset.toString();
-                imageElement.sizes = srcset.toClampedSizes();
+        if (image || source.length) {
+            const imageSource = matchMedia(source);
+            if (imageSource) {
+                imageElement.srcset = imageSource.srcset.toString();
+                imageElement.sizes = imageSource.srcset.toClampedSizes();
             } else if (image) {
                 imageElement.src = image;
             }
@@ -1047,7 +1126,7 @@ class BoxsharpDialog extends HTMLElement {
             expander.classList.remove("hidden");
             image.classList.add("hidden");
             const srcset = ImageSourceSet.parse(this.#image.srcset);
-            if (!srcset.empty) {
+            if (srcset && !srcset.empty) {
                 draggable.setAttribute("src", srcset.highest());
             }
             draggable.classList.remove("hidden");
@@ -1080,7 +1159,7 @@ class BoxsharpDialog extends HTMLElement {
         let largestSrc = image.currentSrc;
         if (image.srcset) {
             const srcset = ImageSourceSet.parse(image.srcset);
-            if (!srcset.empty) {
+            if (srcset && !srcset.empty) {
                 const url = URL.parse(srcset.highest(), document.URL);
                 if (url) {
                     largestSrc = url.toString();
@@ -1115,11 +1194,18 @@ class BoxsharpDialog extends HTMLElement {
     }
 }
 
+class BoxsharpCollectionOptions {
+    /** @type {boolean} */
+    loop = false;
+}
+
 class BoxsharpCollection {
     /** @type {BoxsharpDialog} */
     #lightbox;
     /** @type {BoxsharpItem[]} */
     #items;
+    /** @type {BoxsharpCollectionOptions} */
+    #options;
     /** @type {number} */
     #index;
 
@@ -1128,24 +1214,60 @@ class BoxsharpCollection {
      *
      * @param {BoxsharpDialog} lightbox - A pop-up window instance.
      * @param {BoxsharpItem[]} items - An array items to show.
+     * @param {BoxsharpCollectionOptions} [options] - Configures the behavior of the pop-up window when the collection is shown.
      */
-    constructor(lightbox, items) {
-        if (!items || !items.length) {
-            throw new Error("expected: a non-empty array of elements");
-        }
-
+    constructor(lightbox, items, options) {
         this.#lightbox = lightbox;
         this.#items = items;
+        this.#options = options ?? new BoxsharpCollectionOptions();
         this.#index = 0;
+    }
+
+    /**
+     * Number of items in the collection.
+     *
+     * @returns {number}
+     */
+    size() {
+        return this.#items.length;
+    }
+
+    /**
+     * Adds a new item to the collection.
+     *
+     * @param {BoxsharpItem} item - The item to add.
+     * @returns {void}
+     */
+    add(item) {
+        this.#items.push(item);
+        this.#index = 0;
+    }
+
+    /**
+     * Removes an item from the collection.
+     *
+     * @param {BoxsharpItem} item - The item to remove.
+     * @returns {void}
+     */
+    remove(item) {
+        const items = this.#items;
+        const index = items.indexOf(item);
+        if (index >= 0) {
+            items.splice(index, 1);
+        }
     }
 
     /**
      * Opens the pop-up window displaying an item.
      *
-     * @param {number} [index] - The index of the item to show.
+     * @param {BoxsharpItem | number} [item] - The item or the index of the item to show.
      * @returns {void}
      */
-    open(index) {
+    open(item) {
+        if (!this.#items.length) {
+            return;
+        }
+
         const navigate_fn = (/** @type {CustomEvent} */ event) => { this.#navigate(event.detail.action); };
         const lightbox = this.#lightbox;
         lightbox.addEventListener("navigate", navigate_fn);
@@ -1153,7 +1275,16 @@ class BoxsharpCollection {
             lightbox.removeEventListener("navigate", navigate_fn);
         }, { once: true });
 
-        this.#show(index || 0);
+        /** @type {number} */
+        let index = 0;
+        if (item) {
+            if (item instanceof BoxsharpItem) {
+                index = this.#items.indexOf(item);
+            } else {
+                index = item;
+            }
+        }
+        this.#show(index);
     }
 
     /**
@@ -1165,11 +1296,12 @@ class BoxsharpCollection {
     #show(index) {
         this.#index = index;
         this.#lightbox.reset();
-        const options = new BoxsharpOptions();
-        options.prev = index > 0;
-        options.next = index < this.#items.length - 1;
+        const dialogOptions = new BoxsharpDialogOptions();
+        const loop = this.#options.loop;
+        dialogOptions.prev = loop || index > 0;
+        dialogOptions.next = loop || index < this.#items.length - 1;
         requestAnimationFrame(() => {
-            this.#lightbox.open(this.#items[this.#index], options);
+            this.#lightbox.open(this.#items[this.#index], dialogOptions);
         });
     }
 
@@ -1180,6 +1312,7 @@ class BoxsharpCollection {
      * @returns {void}
      */
     #navigate(action) {
+        const loop = this.#options.loop;
         const last = this.#items.length - 1;
         /** @type {?number} */
         let target = null;
@@ -1188,10 +1321,16 @@ class BoxsharpCollection {
                 target = 0;
                 break;
             case "prev":
-                target = Math.max(0, this.#index - 1);
+                target = this.#index - 1;
+                if (target < 0) {
+                    target = loop ? last : 0;
+                }
                 break;
             case "next":
-                target = Math.min(last, this.#index + 1);
+                target = this.#index + 1;
+                if (target > last) {
+                    target = loop ? 0 : last;
+                }
                 break;
             case "last":
                 target = last;
@@ -1215,9 +1354,7 @@ class BoxsharpCollection {
      * @returns {void}
      */
     static scan(name) {
-        if (!name) {
-            name = "boxsharp";
-        }
+        name ??= "boxsharp";
 
         const lightbox = BoxsharpDialog.singleton();
 
@@ -1255,12 +1392,13 @@ class BoxsharpCollection {
 }
 
 class BoxsharpLink extends HTMLElement {
-    /** @type {BoxsharpCollection} */
-    #gallery;
+    /** @type {Map<string, BoxsharpCollection>} */
+    static #groups = new Map();
 
-    constructor() {
-        super();
-    }
+    /** @type {BoxsharpCollection} */
+    #collection;
+    /** @type {BoxsharpItem} */
+    #item;
 
     connectedCallback() {
         /** @type {BoxsharpItem} */
@@ -1275,6 +1413,7 @@ class BoxsharpLink extends HTMLElement {
             item = BoxsharpItem.fromLink(this);
         }
 
+        // fetch target width and height (if present)
         const width = this.getAttribute("width");
         if (width) {
             item.width = parseInt(width);
@@ -1283,12 +1422,74 @@ class BoxsharpLink extends HTMLElement {
         if (height) {
             item.height = parseInt(height);
         }
+        const srcset = ImageSourceSet.extract(this);
+        if (srcset) {
+            item.source.push(new ImageSource(srcset));
+        }
+
+        for (const child of this.children) {
+            if (child.tagName === "SOURCE") {
+                const srcset = ImageSourceSet.extract(child);
+                if (srcset) {
+                    const imageSource = new ImageSource(srcset);
+                    imageSource.type = child.getAttribute("type") ?? undefined;
+                    imageSource.media = child.getAttribute("media") ?? undefined;
+                    item.source.push(imageSource);
+                }
+            }
+        }
+
+        // configure collection display options
+        const options = new BoxsharpCollectionOptions();
+        options.loop = this.#getBooleanAttribute("loop") ?? options.loop;
 
         const lightbox = BoxsharpDialog.singleton();
-        this.#gallery = new BoxsharpCollection(lightbox, [item]);
+
+        /** @type {BoxsharpCollection | undefined} */
+        let collection;
+        const group = this.getAttribute("group");
+        if (group) {
+            const map = BoxsharpLink.#groups;
+            collection = map.get(group);
+            if (collection) {
+                collection.add(item);
+            } else {
+                collection = new BoxsharpCollection(lightbox, [item], options);
+                map.set(group, collection);
+            }
+        } else {
+            collection = new BoxsharpCollection(lightbox, [item], options);
+        }
+
+        this.#collection = collection;
+        this.#item = item;
         this.addEventListener("click", () => {
-            this.#gallery.open();
+            collection.open(item);
         });
+    }
+
+    connectedMoveCallback() {
+        // nothing to do
+    }
+
+    disconnectedCallback() {
+        this.#collection.remove(this.#item);
+    }
+
+    /**
+     * Retrieves the value of a Boolean attribute.
+     *
+     * @param {string} attr - Custom attribute name whose value to fetch.
+     * @returns {boolean | null} - Boolean attribute value, or `null` when attribute is missing.
+     */
+    #getBooleanAttribute(attr) {
+        const value = this.getAttribute(attr);
+        if (value === "true") {
+            return true;
+        } else if (value === "false") {
+            return false;
+        }
+        return null;
     }
 }
 
