@@ -688,6 +688,8 @@ class BoxsharpDialog extends HTMLElement {
     #backdrop;
     /** @type {HTMLElement} */
     #progress;
+    /** @type {HTMLElement} */
+    #picture;
     /** @type {HTMLImageElement} */
     #image;
     /** @type {HTMLVideoElement} */
@@ -712,6 +714,8 @@ class BoxsharpDialog extends HTMLElement {
     #expander;
     /** @type {ResizeObserver} */
     #sizeObserver;
+    /** @type {(ev: Event) => void} */
+    #resizeCallback;
 
     connectedCallback() {
         const shadow = this.attachShadow({ mode: "open" });
@@ -721,7 +725,9 @@ class BoxsharpDialog extends HTMLElement {
             this.#backdrop = HTML("div", { className: "backdrop" },
                 this.#figure = HTML("figure", {},
                     this.#draggable = /** @type {BoxsharpDraggable} */ (HTML("boxsharp-draggable")),
-                    this.#image = /** @type {HTMLImageElement} */ (HTML("img")),
+                    this.#picture = /** @type {HTMLElement} */ (HTML("picture", {},
+                        this.#image = /** @type {HTMLImageElement} */ (HTML("img")),
+                    )),
                     this.#video = /** @type {HTMLVideoElement} */ (HTML("video", { controls: true })),
                     this.#iframe = /** @type {HTMLIFrameElement} */ (HTML("iframe", { allow: "fullscreen" })),
                     this.#unavailable = HTML("div", { className: "unavailable", textContent: "🖼️" }),
@@ -736,22 +742,12 @@ class BoxsharpDialog extends HTMLElement {
             )
         );
 
-        const figure = this.#figure;
         this.#sizeObserver = new ResizeObserver((entries) => {
             for (const entry of entries) {
-                const sourceWidth = entry.contentBoxSize[0].inlineSize;
-                this.#figcaption.style.width = `${sourceWidth}px`;
-
-                if (figure.scrollHeight > figure.clientHeight) {
-                    // decrease image or video size if it leads to overflow in container
-                    const factor = figure.clientHeight / figure.scrollHeight;
-                    const targetWidth = Math.floor(sourceWidth * factor);
-                    if (targetWidth > 100 && targetWidth != sourceWidth) {
-                        const target = /** @type {HTMLElement} */ (entry.target);
-                        target.style.width = `${targetWidth}px`;
-                    }
-                }
+                const width = entry.contentBoxSize[0].inlineSize;
+                this.#figcaption.style.width = `${width}px`;
             }
+            this.#layout();
         });
 
         this.reset();
@@ -761,7 +757,6 @@ class BoxsharpDialog extends HTMLElement {
             }
         });
 
-        const image = this.#image;
         const expander = this.#expander;
         const clickCallback = () => {
             if (this.#isExpandable()) {
@@ -769,6 +764,7 @@ class BoxsharpDialog extends HTMLElement {
             }
         };
         expander.addEventListener("click", clickCallback);
+        const image = this.#image;
         image.addEventListener("dblclick", clickCallback);
 
         // navigation with buttons
@@ -850,6 +846,11 @@ class BoxsharpDialog extends HTMLElement {
             }
         });
 
+        this.#resizeCallback = () => {
+            this.#layout();
+        };
+        window.addEventListener("resize", this.#resizeCallback);
+
         // update whether expander icon is visible when container size changes
         let lastSrc;
         const imageObserver = new ResizeObserver(() => {
@@ -871,6 +872,7 @@ class BoxsharpDialog extends HTMLElement {
 
     disconnectedCallback() {
         document.removeEventListener("keydown", this.#keydownCallback);
+        window.removeEventListener("resize", this.#resizeCallback);
     }
 
     /**
@@ -895,9 +897,13 @@ class BoxsharpDialog extends HTMLElement {
             attrs.forEach((attr) => { elem.removeAttribute(attr); });
         };
 
+        const picture = this.#picture;
+        picture.classList.add("hidden");
         const image = this.#image;
-        image.classList.add("hidden");
+        image.remove();
         removeAttributes(image, ["src", "srcset", "sizes", "alt", "style"]);
+        picture.textContent = "";  // remove all children
+        picture.append(image);
 
         const draggable = this.#draggable;
         draggable.classList.add("hidden");
@@ -918,7 +924,7 @@ class BoxsharpDialog extends HTMLElement {
         this.#unavailable.classList.add("hidden");
 
         const caption = this.#figcaption;
-        caption.textContent = "";
+        caption.textContent = "";  // remove all children
         caption.removeAttribute("style");
     }
 
@@ -1041,7 +1047,7 @@ class BoxsharpDialog extends HTMLElement {
         } else if (image || source.length) {
             const preloader = new Image();
             preloader.addEventListener("load", () => {
-                this.#image.classList.remove("hidden");
+                this.#picture.classList.remove("hidden");
                 this.#show(item, showLoadingTimeout);
             }, { once: true });
             preloader.addEventListener("error", () => {
@@ -1074,15 +1080,32 @@ class BoxsharpDialog extends HTMLElement {
         clearTimeout(showLoadingTimeout);
         this.#progress.classList.add("hidden");
 
+        const pictureElement = this.#picture;
         const imageElement = this.#image;
         const videoElement = this.#video;
         if (image || source.length) {
-            const imageSource = matchMedia(source);
-            if (imageSource) {
-                imageElement.srcset = imageSource.srcset.toString();
-                imageElement.sizes = imageSource.srcset.toClampedSizes();
-            } else if (image) {
+            const sourceElements = source.map(imageSource => {
+                /** @type{Object<string, string>} */
+                let attrs = { srcset: imageSource.srcset.toString(), sizes: imageSource.srcset.toClampedSizes() };
+                if (imageSource.type) {
+                    attrs.type = imageSource.type;
+                }
+                if (imageSource.media) {
+                    attrs.media = imageSource.media;
+                }
+                return HTML("source", attrs);
+            });
+            pictureElement.append(...sourceElements);
+            pictureElement.append(imageElement);
+
+            if (image) {
                 imageElement.src = image;
+                for (const imageSource of source) {
+                    if (!imageSource.type && !imageSource.media) {
+                        imageElement.srcset = imageSource.srcset.toString();
+                        imageElement.sizes = imageSource.srcset.toClampedSizes();
+                    }
+                }
             }
 
             if (alt) {
@@ -1094,7 +1117,7 @@ class BoxsharpDialog extends HTMLElement {
             this.#figcaption.innerHTML = caption;
         }
 
-        if (isVisible(imageElement)) {
+        if (isVisible(pictureElement)) {
             this.#sizeObserver.observe(imageElement);
         }
         if (isVisible(videoElement)) {
@@ -1113,7 +1136,7 @@ class BoxsharpDialog extends HTMLElement {
      * @param {boolean} isExpanded - The new expanded state.
      */
     #expand(isExpanded) {
-        const image = this.#image;
+        const picture = this.#picture;
         const draggable = this.#draggable;
         const expander = this.#expander;
         const observer = this.#sizeObserver;
@@ -1124,7 +1147,7 @@ class BoxsharpDialog extends HTMLElement {
             observer.disconnect();
 
             expander.classList.remove("hidden");
-            image.classList.add("hidden");
+            picture.classList.add("hidden");
             const srcset = ImageSourceSet.parse(this.#image.srcset);
             if (srcset && !srcset.empty) {
                 draggable.setAttribute("src", srcset.highest());
@@ -1134,9 +1157,9 @@ class BoxsharpDialog extends HTMLElement {
         } else {
             draggable.classList.add("hidden");
             draggable.removeAttribute("src");
-            image.classList.remove("hidden");
+            picture.classList.remove("hidden");
 
-            observer.observe(image);
+            observer.observe(this.#image);
         }
     }
 
@@ -1167,6 +1190,39 @@ class BoxsharpDialog extends HTMLElement {
             }
         }
         return largestSrc !== image.currentSrc || image.naturalWidth !== image.width || image.naturalHeight !== image.height;
+    }
+
+    /**
+     * Checks if child elements of figure overflow their container and updates the layout if necessary.
+     *
+     * @returns {void}
+     */
+    #layout() {
+        /** @type {HTMLElement | undefined} */
+        let target;
+        const video = this.#video;
+        if (isVisible(this.#picture)) {
+            target = this.#image;
+        } else if (isVisible(video)) {
+            target = video;
+        } else {
+            return;
+        }
+
+        const figure = this.#figure;
+        if (figure.scrollHeight < 0.8 * window.innerHeight) {
+            // remove constraints if there is sufficient space
+            target.style.removeProperty("width");
+        }
+
+        if (figure.scrollHeight > figure.clientHeight) {
+            // decrease image or video size if it leads to overflow in container
+            const factor = figure.clientHeight / figure.scrollHeight;
+            const width = Math.floor(target.clientWidth * factor);
+            if (width > 100 && width != target.clientWidth) {
+                target.style.width = `${width}px`;
+            }
+        }
     }
 
     /**
