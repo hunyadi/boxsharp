@@ -5,11 +5,11 @@
 ## Features
 
 - **Modern browser support.** Works seamlessly in Chrome, Edge, Firefox, and Safari.
-- **Versatile content display.** Handles images, videos, PDFs, external pages (via iframes), and more.
+- **Versatile content display.** Handles images, videos, PDFs and external pages.
 - **Custom captions.** Add description to each item using plain text or HTML tags.
 - **Flexible navigation.** Navigate using buttons, keyboard (left/right arrows), mouse, or swipe gestures.
+- **History-aware.** Supports browser *back* and *forward* buttons to close and reopen.
 - **Interactive image handling.** Expand large images and pan by dragging.
-- **Quick navigation bar.** Jump directly to any item with a fast-access navigation bar.
 - **Optimized image loading.** Automatically selects the smallest image that fills the viewport.
 - **Responsive design.** Oversized content is scaled down to fit the browser window.
 - **Easy integration.** Includes a simple API and ready-to-use code snippets for fast setup.

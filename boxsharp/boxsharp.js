@@ -153,11 +153,12 @@ user-select: none;
 
         // gesture event handlers
         container.addEventListener("touchstart", (ev) => {
-            if (ev.touches.length === 1) {
+            const touches = ev.touches;
+            if (touches.length === 1) {
                 this.#isDragging = true;
-                const touches = ev.touches;
-                this.#startX = touches[0].pageX;
-                this.#startY = touches[0].pageY;
+                const touch = touches[0];
+                this.#startX = touch.pageX;
+                this.#startY = touch.pageY;
             }
         });
 
@@ -167,17 +168,19 @@ user-select: none;
                 this.#isDragging = false;
                 const touches = ev.changedTouches;
                 if (touches.length === 1) {
-                    this.#reposition(touches[0].pageX, touches[0].pageY);
+                    const touch = touches[0];
+                    this.#reposition(touch.pageX, touch.pageY);
                 }
             }
         };
         document.addEventListener("touchend", this.#touchend);
 
         this.#touchmove = (ev) => {
-            if (this.#isDragging && ev.touches.length === 1) {
+            const touches = ev.touches;
+            if (this.#isDragging && touches.length === 1) {
                 ev.preventDefault();
-                const touches = ev.touches;
-                this.#move(touches[0].pageX, touches[0].pageY);
+                const touch = touches[0];
+                this.#move(touch.pageX, touch.pageY);
             }
         };
         document.addEventListener("touchmove", this.#touchmove);
@@ -227,7 +230,7 @@ user-select: none;
      *
      * @param {number} absX - Horizontal coordinate for mouse or touch position, in event coordinates.
      * @param {number} absY - Vertical coordinate for mouse or touch position, in event coordinates.
-     * @returns {{ x: number; y: number; }}
+     * @returns {{ x: number, y: number }}
      */
     #move(absX, absY) {
         const deltaX = absX - this.#startX;
@@ -304,9 +307,108 @@ user-select: none;
 }
 
 /**
+ * Serializes an object to and hydrates an object from a plain JSON string such that it can be persisted as `history.state`.
+ */
+class Serializable {
+    /** @type {Object<string, { new(): any }>} - Maps class names to class constructors. */
+    static #registry = {};
+
+    /**
+     * Registers the class for serialization and de-serialization.
+     *
+     * @param {{ new(): any }} cls - A class constructor.
+     * @returns {void}
+     */
+    static register(cls) {
+        Serializable.#registry[cls.name] = cls;
+    }
+
+    /**
+     * Serializes the object into a JSON string.
+     *
+     * @returns {string} - JSON string.
+     */
+    toJSON() {
+        return JSON.stringify(this.#toJsonObject());
+    }
+
+    /**
+     * Reconstructs an object from a JSON string.
+     *
+     * @param {string} str - JSON String
+     * @returns {any}
+     */
+    static fromJSON(str) {
+        return Serializable.#fromJsonObject(JSON.parse(str));
+    }
+
+    /**
+     * Serializes the object into a plain JSON object.
+     *
+     * @returns {any}
+     */
+    #toJsonObject() {
+        /**
+         * @param {any} value
+         * @returns {any}
+         */
+        function asJSON(value) {
+            return value instanceof Serializable ? value.#toJsonObject() : value;
+        }
+
+        const data = {};
+        for (const [key, value] of Object.entries(this)) {
+            if (Array.isArray(value)) {
+                data[key] = value.map(item => asJSON(item));
+            } else {
+                data[key] = asJSON(value);
+            }
+        }
+        data.__class = this.constructor.name;
+        return data;
+    }
+
+    /**
+     * Reconstructs a rich object from a plain JSON object.
+     *
+     * @param {any} json - Plain JSON object.
+     * @returns {any} - Reconstructed rich object.
+     */
+    static #fromJsonObject(json) {
+        /**
+         * @param {any} obj
+         * @returns {any}
+         */
+        function asValue(obj) {
+            return obj && typeof obj === "object" && "__class" in obj ? Serializable.#fromJsonObject(obj) : obj;
+        }
+
+        const cls = Serializable.#registry[json.__class];
+        const instance = new cls();  // empty instance
+        for (const [key, value] of Object.entries(json)) {
+            if (key === "__class") {
+                continue;
+            }
+
+            if (Array.isArray(value)) {
+                instance[key] = value.map(item => asValue(item));
+            } else {
+                instance[key] = asValue(value);
+            }
+        }
+
+        return instance;
+    }
+}
+
+/**
  * Represents a single item in the `srcset` attribute of an `<img>` element.
  */
-class ImageSourceItem {
+class ImageSourceItem extends Serializable {
+    static {
+        Serializable.register(this);
+    }
+
     /** @type {string} */
     url;
     /** @type {number} */
@@ -315,10 +417,13 @@ class ImageSourceItem {
     /**
      * @param {string} url - URL to an image.
      * @param {number} width - A numeric resolution in the `srcset` attribute syntax, e.g. `640w`.
+     * @returns {ImageSourceItem}
      */
-    constructor(url, width) {
-        this.url = url;
-        this.width = width;
+    static create(url, width) {
+        const self = new ImageSourceItem();
+        self.url = url;
+        self.width = width;
+        return self;
     }
 
     /**
@@ -335,7 +440,11 @@ class ImageSourceItem {
 /**
  * Represents a parsed `srcset` attribute acquired from an `<img>` element.
  */
-class ImageSourceSet {
+class ImageSourceSet extends Serializable {
+    static {
+        Serializable.register(this);
+    }
+
     /** @type {ImageSourceItem[]} */
     items;
 
@@ -365,22 +474,19 @@ class ImageSourceSet {
     }
 
     /**
-     * Ensures smallest image size is selected that fills the browser window without scaling the image beyond its natural dimensions.
-     *
-     * @returns {string} A value assignable to the attribute `sizes`.
-     */
-    toClampedSizes() {
-        const width = this.items[0].width;
-        return `(max-width: ${width}px) 100vw, ${width}px`;
-    }
-
-    /**
      * Returns a source set specification that allows the browser to select the smallest image size that fills the browser window.
      *
-     * @returns {string} - A value assignable to the attribute `srcset`.
+     * Ensures smallest image size is selected that fills the browser window without scaling the image beyond its natural dimensions.
+     *
+     * @returns {{srcset: string, sizes: string}} - Values assignable to the attributes `srcset` and `sizes`.
      */
-    toString() {
-        return this.items.map(item => `${item.url} ${item.width}w`).join(", ");
+    toObject() {
+        const items = this.items;
+        const width = items[0].width;
+        return {
+            srcset: items.map(item => `${item.url} ${item.width}w`).join(", "),
+            sizes: `(max-width: ${width}px) 100vw, ${width}px`
+        };
     }
 
     /**
@@ -395,7 +501,7 @@ class ImageSourceSet {
         const regexp = /(\S+)\s+(\d+)w(?:,|$)/g;
         let match;
         while ((match = regexp.exec(srcset)) !== null) {
-            items.push(new ImageSourceItem(match[1], parseInt(match[2])));
+            items.push(ImageSourceItem.create(match[1], parseInt(match[2], 10)));
         }
 
         // sort descending, largest width first
@@ -428,7 +534,11 @@ class ImageSourceSet {
     }
 }
 
-class ImageSource {
+class ImageSource extends Serializable {
+    static {
+        Serializable.register(this);
+    }
+
     /** @type {ImageSourceSet} - Source URLs acquired from the `srcset` attribute value of an image. */
     srcset = new ImageSourceSet();
     /** @type {string | undefined} - MIME media type with optional codecs parameter. */
@@ -440,11 +550,14 @@ class ImageSource {
      * @param {ImageSourceSet} srcset
      * @param {string} [type]
      * @param {string} [media]
+     * @returns {ImageSource}
      */
-    constructor(srcset, type, media) {
-        this.srcset = srcset;
-        this.type = type;
-        this.media = media;
+    static create(srcset, type, media) {
+        const self = new ImageSource();
+        self.srcset = srcset;
+        self.type = type;
+        self.media = media;
+        return self;
     }
 }
 
@@ -452,7 +565,11 @@ class ImageSource {
 /**
  * Source URL and media type pairs captured by the HTML `source` element.
  */
-class VideoSource {
+class VideoSource extends Serializable {
+    static {
+        Serializable.register(this);
+    }
+
     /** @type {string} - Media source URL. */
     src;
     /** @type {string | undefined} - MIME media type with optional codecs parameter. */
@@ -463,17 +580,24 @@ class VideoSource {
     /**
      * @param {string} src
      * @param {string} [type]
+     * @returns {VideoSource}
      */
-    constructor(src, type) {
-        this.src = src;
-        this.type = type;
+    static create(src, type) {
+        const self = new VideoSource();
+        self.src = src;
+        self.type = type;
+        return self;
     }
 }
 
 /**
  * Captures properties associated with an item to display.
  */
-class BoxsharpItem {
+class BoxsharpItem extends Serializable {
+    static {
+        Serializable.register(this);
+    }
+
     /** @type {string | undefined} - `src` attribute value for an image, or `poster` attribute value for a video. */
     image;
     /** @type {ImageSource[]} - Source URLs acquired from the `srcset` attribute value of an image. */
@@ -579,10 +703,10 @@ class BoxsharpItem {
         const item = new BoxsharpItem();
         item.image = imageURL;
         if (srcset) {
-            item.source.push(new ImageSource(srcset));
+            item.source.push(ImageSource.create(srcset));
         }
         if (videoURL) {
-            item.video.push(new VideoSource(videoURL));
+            item.video.push(VideoSource.create(videoURL));
         }
         item.frame = frameURL;
         item.alt = alt;
@@ -611,10 +735,10 @@ class BoxsharpItem {
         /** @type {VideoSource[]} */
         const sources = [];
         elem.querySelectorAll("source").forEach(source => {
-            sources.push(new VideoSource(source.src, source.type));
+            sources.push(VideoSource.create(source.src, source.type));
         });
         if (!sources.length && elem.src) {
-            sources.push(new VideoSource(elem.src));
+            sources.push(VideoSource.create(elem.src));
         }
 
         const item = new BoxsharpItem();
@@ -771,12 +895,12 @@ class BoxsharpDialog extends HTMLElement {
         this.#prevNav.addEventListener("click", (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
-            this.prev();
+            this.#prev();
         });
         this.#nextNav.addEventListener("click", (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
-            this.next();
+            this.#next();
         });
 
         // navigation with keys
@@ -793,24 +917,16 @@ class BoxsharpDialog extends HTMLElement {
                     }
                     break;
                 case "ArrowLeft":
-                    if (isVisible(this.#prevNav)) {
-                        this.prev();
-                    }
+                    this.#prev();
                     break;
                 case "ArrowRight":
-                    if (isVisible(this.#nextNav)) {
-                        this.next();
-                    }
+                    this.#next();
                     break;
                 case "Home":
-                    if (isVisible(this.#prevNav)) {
-                        this.first();
-                    }
+                    this.#first();
                     break;
                 case "End":
-                    if (isVisible(this.#nextNav)) {
-                        this.last();
-                    }
+                    this.#last();
                     break;
                 default:
                     cancel = false;
@@ -835,17 +951,14 @@ class BoxsharpDialog extends HTMLElement {
 
             if (!this.#isExpanded()) {
                 if (endX - startX > threshold) {  // swiped right
-                    if (isVisible(this.#prevNav)) {
-                        this.prev();
-                    }
+                    this.#prev();
                 } else if (startX - endX > threshold) {  // swiped left
-                    if (isVisible(this.#nextNav)) {
-                        this.next();
-                    }
+                    this.#next();
                 }
             }
         });
 
+        // respond to window size changes
         this.#resizeCallback = () => {
             this.#layout();
         };
@@ -873,6 +986,15 @@ class BoxsharpDialog extends HTMLElement {
     disconnectedCallback() {
         document.removeEventListener("keydown", this.#keydownCallback);
         window.removeEventListener("resize", this.#resizeCallback);
+    }
+
+    /**
+     * Determines whether the lightbox pop-up window is shown.
+     *
+     * @returns {boolean} True if the lightbox pop-up window is visible on the screen.
+     */
+    get visible() {
+        return isVisible(this.#backdrop);
     }
 
     /**
@@ -943,8 +1065,10 @@ class BoxsharpDialog extends HTMLElement {
      *
      * @returns {void}
      */
-    first() {
-        this.#navigate("first");
+    #first() {
+        if (isVisible(this.#prevNav)) {
+            this.#navigate("first");
+        }
     }
 
     /**
@@ -952,8 +1076,10 @@ class BoxsharpDialog extends HTMLElement {
      *
      * @returns {void}
      */
-    prev() {
-        this.#navigate("prev");
+    #prev() {
+        if (isVisible(this.#prevNav)) {
+            this.#navigate("prev");
+        }
     }
 
     /**
@@ -961,8 +1087,10 @@ class BoxsharpDialog extends HTMLElement {
      *
      * @returns {void}
      */
-    next() {
-        this.#navigate("next");
+    #next() {
+        if (isVisible(this.#nextNav)) {
+            this.#navigate("next");
+        }
     }
 
     /**
@@ -970,8 +1098,10 @@ class BoxsharpDialog extends HTMLElement {
      *
      * @returns {void}
      */
-    last() {
-        this.#navigate("last");
+    #last() {
+        if (isVisible(this.#nextNav)) {
+            this.#navigate("last");
+        }
     }
 
     /**
@@ -1019,12 +1149,10 @@ class BoxsharpDialog extends HTMLElement {
 
             if (video.length > 1) {
                 const sources = video.map(source => {
-                    /** @type{Object<string, string>} */
-                    let attrs = { src: source.src };
-                    if (source.type) {
-                        attrs.type = source.type;
-                    }
-                    return HTML("source", attrs);
+                    return HTML("source", {
+                        src: source.src,
+                        ...(source.type && { type: source.type })
+                    });
                 });
                 videoElement.append(...sources);
             } else {
@@ -1057,8 +1185,7 @@ class BoxsharpDialog extends HTMLElement {
 
             const imageSource = matchMedia(source);
             if (imageSource) {
-                preloader.srcset = imageSource.srcset.toString();
-                preloader.sizes = imageSource.srcset.toClampedSizes();
+                Object.assign(preloader, imageSource.srcset.toObject());
             } else if (image) {
                 preloader.src = image;
             }
@@ -1085,15 +1212,11 @@ class BoxsharpDialog extends HTMLElement {
         const videoElement = this.#video;
         if (image || source.length) {
             const sourceElements = source.map(imageSource => {
-                /** @type{Object<string, string>} */
-                let attrs = { srcset: imageSource.srcset.toString(), sizes: imageSource.srcset.toClampedSizes() };
-                if (imageSource.type) {
-                    attrs.type = imageSource.type;
-                }
-                if (imageSource.media) {
-                    attrs.media = imageSource.media;
-                }
-                return HTML("source", attrs);
+                return HTML("source", {
+                    ...imageSource.srcset.toObject(),
+                    ...(imageSource.type && { type: imageSource.type }),
+                    ...(imageSource.media && { media: imageSource.media })
+                });
             });
             pictureElement.append(...sourceElements);
             pictureElement.append(imageElement);
@@ -1102,8 +1225,7 @@ class BoxsharpDialog extends HTMLElement {
                 imageElement.src = image;
                 for (const imageSource of source) {
                     if (!imageSource.type && !imageSource.media) {
-                        imageElement.srcset = imageSource.srcset.toString();
-                        imageElement.sizes = imageSource.srcset.toClampedSizes();
+                        Object.assign(imageElement, imageSource.srcset.toObject());
                     }
                 }
             }
@@ -1250,20 +1372,45 @@ class BoxsharpDialog extends HTMLElement {
     }
 }
 
+/**
+ * Generates a random key.
+ *
+ * @param {number} n - Length of output string.
+ * @returns {string}
+ */
+function randomKey(n) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const len = chars.length;
+    const result = new Array(n);  // pre-allocate array
+
+    for (let i = 0; i < n; ++i) {
+        const index = (Math.random() * len) | 0;
+        result[i] = chars.charAt(index);
+    }
+    return result.join("");
+}
+
 class BoxsharpCollectionOptions {
     /** @type {boolean} */
     loop = false;
 }
 
 class BoxsharpCollection {
+    #key = randomKey(24);
     /** @type {BoxsharpDialog} */
     #lightbox;
-    /** @type {BoxsharpItem[]} */
+    /** @type {string[]} - An array of serialized `BoxsharpItem` elements. */
     #items;
     /** @type {BoxsharpCollectionOptions} */
     #options;
     /** @type {number} */
     #index;
+    /** @type {((ev: CustomEvent) => void) | null} */
+    #navigateCallback;
+    /** @type {((ev: Event) => void) | null} */
+    #closedCallback;
+    /** @type {(ev: PopStateEvent) => void} */
+    #popstateCallback;
 
     /**
      * Creates a navigable collection of items to be shown in a pop-up window.
@@ -1274,9 +1421,27 @@ class BoxsharpCollection {
      */
     constructor(lightbox, items, options) {
         this.#lightbox = lightbox;
-        this.#items = items;
+        this.#items = items.map(item => item.toJSON());
         this.#options = options ?? new BoxsharpCollectionOptions();
         this.#index = 0;
+
+        // listen to back/forward navigation
+        this.#popstateCallback = (ev) => {
+            // `event.state` reflects target state, not source state
+            const state = ev.state;
+            if (state && state.boxsharp) {
+                if (!lightbox.visible) {
+                    /** @type {{key: string, item: string}} */
+                    const { key, item } = state.boxsharp;
+                    if (key === this.#key) {
+                        this.open(Serializable.fromJSON(item));
+                    }
+                }
+            } else {
+                this.reset();
+            }
+        };
+        window.addEventListener("popstate", this.#popstateCallback);
     }
 
     /**
@@ -1295,8 +1460,7 @@ class BoxsharpCollection {
      * @returns {void}
      */
     add(item) {
-        this.#items.push(item);
-        this.#index = 0;
+        this.#items.push(item.toJSON());
     }
 
     /**
@@ -1307,7 +1471,7 @@ class BoxsharpCollection {
      */
     remove(item) {
         const items = this.#items;
-        const index = items.indexOf(item);
+        const index = items.indexOf(item.toJSON());
         if (index >= 0) {
             items.splice(index, 1);
         }
@@ -1320,27 +1484,58 @@ class BoxsharpCollection {
      * @returns {void}
      */
     open(item) {
+        this.reset();
+
         if (!this.#items.length) {
             return;
         }
-
-        const navigate_fn = (/** @type {CustomEvent} */ event) => { this.#navigate(event.detail.action); };
-        const lightbox = this.#lightbox;
-        lightbox.addEventListener("navigate", navigate_fn);
-        lightbox.addEventListener("closed", () => {
-            lightbox.removeEventListener("navigate", navigate_fn);
-        }, { once: true });
 
         /** @type {number} */
         let index = 0;
         if (item) {
             if (item instanceof BoxsharpItem) {
-                index = this.#items.indexOf(item);
+                index = this.#items.indexOf(item.toJSON());
             } else {
                 index = item;
             }
         }
-        this.#show(index);
+
+        if (index >= 0) {
+            const navigateCallback = this.#navigateCallback = (ev) => { this.#navigate(ev.detail.action); };
+            const closedCallback = this.#closedCallback = () => {
+                lightbox.removeEventListener("navigate", navigateCallback);
+                const state = history.state;
+                if (state && state.boxsharp) {
+                    history.back();  // return to previous state
+                }
+            };
+            const lightbox = this.#lightbox;
+            lightbox.addEventListener("navigate", navigateCallback);
+            lightbox.addEventListener("closed", closedCallback, { once: true });
+            this.#show(index);
+        }
+    }
+
+    /**
+     * Closes the pop-up window.
+     *
+     * @returns {void}
+     */
+    reset() {
+        const lightbox = this.#lightbox;
+        const closedCallback = this.#closedCallback;
+        if (closedCallback) {
+            lightbox.removeEventListener("closed", closedCallback);
+            this.#closedCallback = null;
+        }
+        const navigateCallback = this.#navigateCallback;
+        if (navigateCallback) {
+            lightbox.removeEventListener("navigate", navigateCallback);
+            this.#navigateCallback = null;
+        }
+        if (lightbox.visible) {
+            lightbox.reset();
+        }
     }
 
     /**
@@ -1351,13 +1546,22 @@ class BoxsharpCollection {
      */
     #show(index) {
         this.#index = index;
-        this.#lightbox.reset();
+        const item = this.#items[index];
+
+        const state = history.state;
+        const memory = { boxsharp: { key: this.#key, item: item } };
+        if (state && state.boxsharp) {
+            history.replaceState(memory, "", "#boxsharp");
+        } else {
+            history.pushState(memory, "", "#boxsharp");
+        }
+
         const dialogOptions = new BoxsharpDialogOptions();
         const loop = this.#options.loop;
         dialogOptions.prev = loop || index > 0;
         dialogOptions.next = loop || index < this.#items.length - 1;
         requestAnimationFrame(() => {
-            this.#lightbox.open(this.#items[this.#index], dialogOptions);
+            this.#lightbox.open(Serializable.fromJSON(item), dialogOptions);
         });
     }
 
@@ -1472,22 +1676,22 @@ class BoxsharpLink extends HTMLElement {
         // fetch target width and height (if present)
         const width = this.getAttribute("width");
         if (width) {
-            item.width = parseInt(width);
+            item.width = parseInt(width, 10);
         }
         const height = this.getAttribute("height");
         if (height) {
-            item.height = parseInt(height);
+            item.height = parseInt(height, 10);
         }
         const srcset = ImageSourceSet.extract(this);
         if (srcset) {
-            item.source.push(new ImageSource(srcset));
+            item.source.push(ImageSource.create(srcset));
         }
 
         for (const child of this.children) {
             if (child.tagName === "SOURCE") {
                 const srcset = ImageSourceSet.extract(child);
                 if (srcset) {
-                    const imageSource = new ImageSource(srcset);
+                    const imageSource = ImageSource.create(srcset);
                     imageSource.type = child.getAttribute("type") ?? undefined;
                     imageSource.media = child.getAttribute("media") ?? undefined;
                     item.source.push(imageSource);
@@ -1503,19 +1707,18 @@ class BoxsharpLink extends HTMLElement {
 
         /** @type {BoxsharpCollection | undefined} */
         let collection;
+        const map = BoxsharpLink.#groups;
         const group = this.getAttribute("group");
         if (group) {
-            const map = BoxsharpLink.#groups;
             collection = map.get(group);
-            if (collection) {
-                collection.add(item);
-            } else {
-                collection = new BoxsharpCollection(lightbox, [item], options);
+        }
+        if (!collection) {
+            collection = new BoxsharpCollection(lightbox, [], options);
+            if (group) {
                 map.set(group, collection);
             }
-        } else {
-            collection = new BoxsharpCollection(lightbox, [item], options);
         }
+        collection.add(item);
 
         this.#collection = collection;
         this.#item = item;
@@ -1539,13 +1742,14 @@ class BoxsharpLink extends HTMLElement {
      * @returns {boolean | null} - Boolean attribute value, or `null` when attribute is missing.
      */
     #getBooleanAttribute(attr) {
-        const value = this.getAttribute(attr);
-        if (value === "true") {
-            return true;
-        } else if (value === "false") {
-            return false;
+        switch (this.getAttribute(attr)) {
+            case "1": case "true":
+                return true;
+            case "0": case "false":
+                return false;
+            default:
+                return null;
         }
-        return null;
     }
 }
 
