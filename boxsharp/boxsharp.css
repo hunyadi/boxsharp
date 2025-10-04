@@ -142,16 +142,21 @@ div.expander {
     width: 24px;
     height: 24px;
     background: rgba(0, 0, 0, .5) 50% no-repeat;
-    background-size: 32px 32px;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M2 2v7h2V5.406L8.594 10 10 8.594 5.406 4H9V2H2zm13 0v2h3.594L14 8.594 15.406 10 20 5.406V9h2V2h-7zM8.594 14L4 18.594V15H2v7h7v-2H5.406L10 15.406 8.594 14zm6.812 0L14 15.406 18.594 20H15v2h7v-7h-2v3.594L15.406 14z' fill='%23fff'/%3E%3C/svg%3E")
+    background-size: 24px 24px;
+    background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHBhdGggZD0iTTAgMHYxNmg0VjRoMTJWMHptMyAwTDAgM2wxNyAxNyAzLTN6TTAgNDhWMzJoNHYxMmgxMnY0em0zIDAtMy0zIDE3LTE3IDMgM3ptNDUgMFYzMmgtNHYxMkgzMnY0em0tMyAwIDMtMy0xNy0xNy0zIDN6bTMtNDh2MTZoLTRWNEgzMlYwem0tMyAwIDMgMy0xNyAxNy0zLTN6IiBmaWxsPSIjZmZmIi8+PC9zdmc+)
 }
 
 div.expander:hover {
-    background-size: 40px 40px;
+    background-size: 32px 32px;
 }
 
 div.expander.expanded {
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' version='1,1'%3E%3Cpath d='M3.406 2L2 3.406 6.594 8H3v2h7V3H8v3.594L3.406 2zm17.188 0L16 6.594V3h-2v7h7V8h-3.594L22 3.406 20.594 2zM3 14v2h3.594L2 20.594 3.406 22 8 17.406V21h2v-7H3zm11 0v7h2v-3.594L20.594 22 22 20.594 17.406 16H21v-2h-7z' fill='%23fff'/%3E%3C/svg%3E")
+    background-size: 32px 32px;
+    background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHBhdGggZD0iTTIwIDIwVjRoLTR2MTJINHY0em0tMyAwIDMtM0wzIDAgMCAzem0zIDh2MTZoLTRWMzJINHYtNHptLTMgMCAzIDNMMyA0OGwtMy0zem0xMSAwdjE2aDRWMzJoMTJ2LTR6bTMgMC0zIDMgMTcgMTcgMy0zem0tMy04VjRoNHYxMmgxMnY0em0zIDAtMy0zTDQ1IDBsMyAzeiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==)
+}
+
+div.expander.expanded:hover {
+    background-size: 24px 24px;
 }
 
 .hidden {
