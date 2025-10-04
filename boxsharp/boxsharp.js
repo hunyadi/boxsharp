@@ -8,7 +8,6 @@
 **/
 
 /**
- * @license
  * Copyright (c) 2025 Levente Hunyadi
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -58,6 +57,66 @@ function createStyle(css) {
     const elem = document.createElement("style");
     elem.textContent = css;
     return elem;
+}
+
+/**
+ * Creates an HTML element.
+ *
+ * @param {string} tag - HTML element to create.
+ * @param {object} [props={}] - HTML element attributes.
+ * @param {HTMLElement[]} children - Direct descendants of the HTML element to create.
+ * @returns {HTMLElement}
+ */
+function HTML(tag, props = {}, ...children) {
+    const element = document.createElement(tag);
+    Object.assign(element, props);
+    element.append(...children);
+    return element;
+};
+
+/**
+ * Creates an SVG element.
+ *
+ * @param {string} tag - SVG element to create.
+ * @param {Object<string, string>} [props={}] - SVG element attributes.
+ * @param {SVGElement[]} children - Direct descendants of the SVG element to create.
+ */
+function SVG(tag, props = {}, ...children) {
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, tag);
+    for (const [name, value] of Object.entries(props)) {
+        svg.setAttribute(name, value);
+    }
+    svg.append(...children);
+    return svg;
+}
+
+/**
+ * Generates a data URI with the specified MIME type.
+ *
+ * @param {string} content - Data to encode.
+ * @param {string} [mimeType] - MIME type (default is `text/plain`).
+ * @returns {string} - Data encapsulated in a data URI.
+ */
+function createCSSDataURL(content, mimeType = "text/plain") {
+    const encoder = new TextEncoder();
+    const uint8Array = encoder.encode(content);
+    const base64 = btoa(String.fromCharCode(...uint8Array));
+    return `data:${mimeType};base64,${base64}`;
+}
+
+/**
+ * Wraps an SVG image in a CSS `url()` function call.
+ *
+ * A minifier may call this function with an SVG element as the input argument.
+ *
+ * @param {SVGElement} svg - The source image.
+ * @returns {string} - A string suitable for assigning to a CSS property that expects an image.
+ */
+function createSVG(svg) {
+    const serializer = new XMLSerializer();
+    const xmlString = serializer.serializeToString(svg);
+    return `url(${createCSSDataURL(xmlString, "image/svg+xml")})`;
 }
 
 /**
@@ -384,20 +443,19 @@ class Serializable {
         }
 
         const cls = Serializable.#registry[json.__class];
-        const instance = new cls();  // empty instance
+        const obj = new cls();  // empty instance
         for (const [key, value] of Object.entries(json)) {
             if (key === "__class") {
                 continue;
             }
 
             if (Array.isArray(value)) {
-                instance[key] = value.map(item => asValue(item));
+                obj[key] = value.map(item => asValue(item));
             } else {
-                instance[key] = asValue(value);
+                obj[key] = asValue(value);
             }
         }
-
-        return instance;
+        return obj;
     }
 }
 
@@ -424,16 +482,6 @@ class ImageSourceItem extends Serializable {
         self.url = url;
         self.width = width;
         return self;
-    }
-
-    /**
-     * Allows this class to be used with `sort`.
-     *
-     * @param {ImageSourceItem} op - The item to compare against.
-     * @returns {number}
-     */
-    compare(op) {
-        return this.width - op.width;
     }
 }
 
@@ -505,7 +553,7 @@ class ImageSourceSet extends Serializable {
         }
 
         // sort descending, largest width first
-        items.sort((a, b) => b.compare(a));
+        items.sort((a, b) => b.width - a.width);
 
         if (items.length) {
             const obj = new ImageSourceSet();
@@ -780,19 +828,6 @@ function isVisible(elem) {
     return !elem.classList.contains("hidden");
 }
 
-/**
- * @param {string} tag - HTML element to create.
- * @param {object} [props={}] - HTML element attributes.
- * @param {HTMLElement[]} children - Direct descendants of the HTML element to create.
- * @returns {HTMLElement}
- */
-function HTML(tag, props = {}, ...children) {
-    const element = document.createElement(tag);
-    Object.assign(element, props);
-    element.append(...children);
-    return element;
-};
-
 class BoxsharpDialogOptions {
     /** @type {boolean} - Whether to show the *previous* navigation button. */
     prev;
@@ -998,20 +1033,19 @@ class BoxsharpDialog extends HTMLElement {
     }
 
     /**
-     * Hides the lightbox pop-up window.
+     * Resets the lightbox pop-up window to its default state with nothing visible on the screen.
      *
      * @returns {void}
      */
     reset() {
         this.#sizeObserver.disconnect();
 
-        const backdrop = this.#backdrop;
-        backdrop.classList.add("hidden");
-        backdrop.classList.remove("fade-in");
-
+        this.#backdrop.classList.add("hidden");
         this.#progress.classList.add("hidden");
 
-        this.#figure.classList.remove("zoom-in");
+        const figure = this.#figure;
+        figure.classList.remove("zoom-from");
+        figure.classList.remove("zoom-to");
 
         this.#expand(false);
 
@@ -1048,6 +1082,19 @@ class BoxsharpDialog extends HTMLElement {
         const caption = this.#figcaption;
         caption.textContent = "";  // remove all children
         caption.removeAttribute("style");
+    }
+
+    /**
+     * Hides the lightbox pop-up window.
+     *
+     * The backdrop overlay remains visible.
+     *
+     * @returns {void}
+     */
+    hide() {
+        this.reset();
+        this.#backdrop.classList.remove("hidden");
+        this.#figure.classList.add("zoom-from");
     }
 
     /**
@@ -1107,8 +1154,6 @@ class BoxsharpDialog extends HTMLElement {
     /**
      * Opens the lightbox pop-up window.
      *
-     * Loads resources to be shown in the lightbox pop-up window.
-     *
      * @param {BoxsharpItem} item - Captures properties associated with an item to display.
      * @param {BoxsharpDialogOptions} options - Configures the appearance of the pop-up window.
      * @returns {void}
@@ -1118,13 +1163,19 @@ class BoxsharpDialog extends HTMLElement {
         this.#prevNav.classList.toggle("hidden", !prev);
         this.#nextNav.classList.toggle("hidden", !next);
 
-        this.reset();
+        this.hide();
+        requestAnimationFrame(() => {
+            this.#load(item);
+        });
+    }
 
-        const backdrop = this.#backdrop;
-        backdrop.classList.add("fade-in");
-        backdrop.classList.remove("hidden");
-        this.#figure.classList.add("zoom-in");
-
+    /**
+     * Loads resources to be shown in the lightbox pop-up window.
+     *
+     * @param {BoxsharpItem} item - Captures properties associated with an item to display.
+     * @returns {void}
+     */
+    #load(item) {
         const showLoadingTimeout = setTimeout(() => {
             this.#progress.classList.remove("hidden");
         }, 500);
@@ -1247,9 +1298,9 @@ class BoxsharpDialog extends HTMLElement {
         }
 
         // trigger transition to full size
-        requestAnimationFrame(() => {
-            this.#figure.classList.remove("zoom-in");
-        });
+        const figure = this.#figure;
+        figure.classList.remove("zoom-from");
+        figure.classList.add("zoom-to");
     }
 
     /**
@@ -1373,21 +1424,18 @@ class BoxsharpDialog extends HTMLElement {
 }
 
 /**
- * Generates a random key.
+ * Generates a random identifier.
  *
- * @param {number} n - Length of output string.
- * @returns {string}
+ * @returns {string} - An identifier suitable for use in object keys.
  */
-function randomKey(n) {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    const len = chars.length;
-    const result = new Array(n);  // pre-allocate array
-
-    for (let i = 0; i < n; ++i) {
-        const index = (Math.random() * len) | 0;
-        result[i] = chars.charAt(index);
+function randomIdentifier() {
+    /** Produces a random string of 5 digits with base 36, whose numeric value fits into the 32-bit integer range. */
+    function randomDigits() {
+        return ((Math.random() * (36 ** 5 - 36 ** 4) | 0) + 36 ** 4).toString(36);
     }
-    return result.join("");
+
+    // generate 4 groups of digits where each group has length 5
+    return randomDigits() + randomDigits() + randomDigits() + randomDigits();
 }
 
 class BoxsharpCollectionOptions {
@@ -1396,7 +1444,7 @@ class BoxsharpCollectionOptions {
 }
 
 class BoxsharpCollection {
-    #key = randomKey(24);
+    #key = randomIdentifier();
     /** @type {BoxsharpDialog} */
     #lightbox;
     /** @type {string[]} - An array of serialized `BoxsharpItem` elements. */
@@ -1424,13 +1472,23 @@ class BoxsharpCollection {
         this.#items = items.map(item => item.toJSON());
         this.#options = options ?? new BoxsharpCollectionOptions();
         this.#index = 0;
+        if (items.length > 0) {
+            this.initialize();
+        }
+    }
 
+    /**
+     * Adds global event listeners.
+     *
+     * @returns {void}
+     */
+    initialize() {
         // listen to back/forward navigation
         this.#popstateCallback = (ev) => {
             // `event.state` reflects target state, not source state
             const state = ev.state;
             if (state && state.boxsharp) {
-                if (!lightbox.visible) {
+                if (!this.#lightbox.visible) {
                     /** @type {{key: string, item: string}} */
                     const { key, item } = state.boxsharp;
                     if (key === this.#key) {
@@ -1438,10 +1496,20 @@ class BoxsharpCollection {
                     }
                 }
             } else {
-                this.reset();
+                this.reset(false);
             }
         };
         window.addEventListener("popstate", this.#popstateCallback);
+    }
+
+    /**
+     * Removes global event listeners this class has registered.
+     *
+     * @returns {void}
+     */
+    cleanup() {
+        this.reset(false);
+        window.removeEventListener("popstate", this.#popstateCallback);
     }
 
     /**
@@ -1460,7 +1528,11 @@ class BoxsharpCollection {
      * @returns {void}
      */
     add(item) {
-        this.#items.push(item.toJSON());
+        const items = this.#items;
+        if (items.length === 0) {
+            this.initialize();
+        }
+        items.push(item.toJSON());
     }
 
     /**
@@ -1474,6 +1546,9 @@ class BoxsharpCollection {
         const index = items.indexOf(item.toJSON());
         if (index >= 0) {
             items.splice(index, 1);
+            if (items.length === 0) {
+                this.cleanup();
+            }
         }
     }
 
@@ -1484,7 +1559,7 @@ class BoxsharpCollection {
      * @returns {void}
      */
     open(item) {
-        this.reset();
+        this.reset(true);
 
         if (!this.#items.length) {
             return;
@@ -1519,9 +1594,10 @@ class BoxsharpCollection {
     /**
      * Closes the pop-up window.
      *
+     * @param {boolean} soonToOpen - True if the lightbox pop-up window is about to (re-)open.
      * @returns {void}
      */
-    reset() {
+    reset(soonToOpen) {
         const lightbox = this.#lightbox;
         const closedCallback = this.#closedCallback;
         if (closedCallback) {
@@ -1534,7 +1610,11 @@ class BoxsharpCollection {
             this.#navigateCallback = null;
         }
         if (lightbox.visible) {
-            lightbox.reset();
+            if (soonToOpen) {
+                lightbox.hide();
+            } else {
+                lightbox.reset();
+            }
         }
     }
 
@@ -1602,6 +1682,40 @@ class BoxsharpCollection {
     }
 
     /**
+     * Registers click event listeners and monitors when any of the observed elements is removed from the DOM to clean up resources.
+     *
+     * This is used with the classic syntax only where listeners are added to HTML `<a>` elements.
+     *
+     * @param {HTMLElement[]} elements - The HTML elements to observe.
+     */
+    #observe(elements) {
+        const hooks = elements.map((element, index) => {
+            const callback = (/** @type {Event} */ ev) => {
+                ev.preventDefault();
+                this.open(index);
+            };
+            element.addEventListener("click", callback);
+            return { element, callback };
+        });
+        const observer = new MutationObserver(() => {
+            elements.forEach(element => {
+                if (!document.body.contains(element)) {
+                    observer.disconnect();
+                    hooks.forEach(hook => {
+                        const { element, callback } = hook;
+                        element.removeEventListener("click", callback);
+                    });
+                    this.cleanup();
+                }
+            });
+        });
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    /**
      * Adds listeners to click events for eligible anchors to open the pop-up window.
      *
      * The function scans the document for occurrences of `<a>` elements with a `rel` attribute of either `NAME` or `NAME-*` where `NAME` is a user-defined
@@ -1620,10 +1734,7 @@ class BoxsharpCollection {
 
         document.querySelectorAll(`a[rel=${CSS.escape(name)}]`).forEach((/** @type {HTMLAnchorElement} */ anchor) => {
             const gallery = new BoxsharpCollection(lightbox, [BoxsharpItem.fromLink(anchor)]);
-            anchor.addEventListener("click", (ev) => {
-                ev.preventDefault();
-                gallery.open();
-            });
+            gallery.#observe([anchor]);
         });
 
         /** @type {Object.<string, HTMLAnchorElement[]>} */
@@ -1641,12 +1752,7 @@ class BoxsharpCollection {
         Object.keys(dictionary).forEach(function (key) {
             const anchors = dictionary[key];
             const gallery = new BoxsharpCollection(lightbox, anchors.map(anchor => BoxsharpItem.fromLink(anchor)));
-            anchors.forEach((anchor, index) => {
-                anchor.addEventListener("click", (ev) => {
-                    ev.preventDefault();
-                    gallery.open(index);
-                });
-            });
+            gallery.#observe(anchors);
         });
     }
 }
