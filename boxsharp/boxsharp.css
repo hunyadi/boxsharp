@@ -98,7 +98,7 @@ figcaption {
     flex: 0 0;
 }
 
-figure>nav>* {
+nav>* {
     background: none center no-repeat;
     position: absolute;
     top: 0;
@@ -107,32 +107,32 @@ figure>nav>* {
     background: rgba(0, 0, 0, .5) 50% no-repeat;
 }
 
-figure>nav>.prev {
+nav>.prev {
     left: 0;
     opacity: 0;
-    background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgdmlld0JveD0iMCAwIDEwMCAxMDAiPjxwYXRoIGQ9Ik01NSAxNXY3MEwzMCA1MHptMTUgMjB2MzBINTVWMzV6IiBmaWxsPSIjZmZmIi8+PC9zdmc+);
+    background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTUgMTV2NzBMMzAgNTB6bTE1IDIwdjMwSDU1VjM1eiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==);
 }
 
-figure>nav>.next {
+nav>.next {
     right: 0;
     opacity: 0;
-    background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgdmlld0JveD0iMCAwIDEwMCAxMDAiPjxwYXRoIGQ9Ik00NSAxNXY3MGwyNS0zNXpNMzAgMzV2MzBoMTVWMzV6IiBmaWxsPSIjZmZmIi8+PC9zdmc+);
+    background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNDUgMTV2NzBsMjUtMzV6TTMwIDM1djMwaDE1VjM1eiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==);
 }
 
-figure>nav>.prev:hover,
-figure>nav>.next:hover {
+nav>.prev:hover,
+nav>.next:hover {
     opacity: 1;
 }
 
 @media (hover: none) and (pointer: coarse) {
 
-    figure>nav>.prev,
-    figure>nav>.next {
+    nav>.prev,
+    nav>.next {
         display: none;
     }
 }
 
-div.expander {
+.expander {
     margin: 12px;
     padding: 12px;
     border-radius: 10px;
@@ -146,16 +146,16 @@ div.expander {
     background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHBhdGggZD0iTTAgMHYxNmg0VjRoMTJWMHptMyAwTDAgM2wxNyAxNyAzLTN6TTAgNDhWMzJoNHYxMmgxMnY0em0zIDAtMy0zIDE3LTE3IDMgM3ptNDUgMFYzMmgtNHYxMkgzMnY0em0tMyAwIDMtMy0xNy0xNy0zIDN6bTMtNDh2MTZoLTRWNEgzMlYwem0tMyAwIDMgMy0xNyAxNy0zLTN6IiBmaWxsPSIjZmZmIi8+PC9zdmc+)
 }
 
-div.expander:hover {
+.expander:hover {
     background-size: 32px 32px;
 }
 
-div.expander.expanded {
+.expander.expanded {
     background-size: 32px 32px;
     background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHBhdGggZD0iTTIwIDIwVjRoLTR2MTJINHY0em0tMyAwIDMtM0wzIDAgMCAzem0zIDh2MTZoLTRWMzJINHYtNHptLTMgMCAzIDNMMyA0OGwtMy0zem0xMSAwdjE2aDRWMzJoMTJ2LTR6bTMgMC0zIDMgMTcgMTcgMy0zem0tMy04VjRoNHYxMmgxMnY0em0zIDAtMy0zTDQ1IDBsMyAzeiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==)
 }
 
-div.expander.expanded:hover {
+.expander.expanded:hover {
     background-size: 24px 24px;
 }
 

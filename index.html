@@ -4,6 +4,8 @@
 <head>
     <meta charset="utf-8">
     <title>boxsharp: a responsive lightbox pop-up window with CSS3 and vanilla JavaScript</title>
+    <meta name="description" content="Demo page for a lightweight pop-up window implementation that displays images, video and other content.">
+    <meta name="viewport" content="width=device-width">
     <link rel="author" href="https://hunyadi.info.hu/levente">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
     <style>
@@ -135,8 +137,8 @@
 
     <div class="example">
         <boxsharp-link>
-            <img alt="A small image" src="https://placehold.co/300x200/CD2A3E/FFFFFF.png" width="75" height="50" sizes="75px"
-                srcset="https://placehold.co/3600x2400/CD2A3E/FFFFFF.png 3600w, https://placehold.co/2400x1600/CD2A3E/FFFFFF.png 2400w, https://placehold.co/1500x1000/CD2A3E/FFFFFF.png 1500w, https://placehold.co/1200x800/CD2A3E/FFFFFF.png 1200w, https://placehold.co/900x600/CD2A3E/FFFFFF.png 900w, https://placehold.co/600x400/CD2A3E/FFFFFF.png 600w, https://placehold.co/300x200/CD2A3E/FFFFFF.png 300w" />
+            <img alt="A small image" src="images/CD2A3E/300x200.png" width="75" height="50" sizes="75px"
+                srcset="images/CD2A3E/3600x2400.png 3600w, images/CD2A3E/2400x1600.png 2400w, images/CD2A3E/1500x1000.png 1500w, images/CD2A3E/1200x800.png 1200w, images/CD2A3E/900x600.png 900w, images/CD2A3E/600x400.png 600w, images/CD2A3E/300x200.png 300w" />
         </boxsharp-link>
     </div>
 
@@ -147,14 +149,14 @@
 
     <div class="example">
         <a rel="boxsharp-flag" title="A red image"
-            data-srcset="https://placehold.co/3600x2400/CD2A3E/FFFFFF.png 3600w, https://placehold.co/2400x1600/CD2A3E/FFFFFF.png 2400w, https://placehold.co/1500x1000/CD2A3E/FFFFFF.png 1500w, https://placehold.co/1200x800/CD2A3E/FFFFFF.png 1200w, https://placehold.co/900x600/CD2A3E/FFFFFF.png 900w, https://placehold.co/600x400/CD2A3E/FFFFFF.png 600w, https://placehold.co/300x200/CD2A3E/FFFFFF.png 300w">
-            <img src="https://placehold.co/300x200/CD2A3E/FFFFFF.png" width="75" height="50" alt="Red" /></a>
+            data-srcset="images/CD2A3E/3600x2400.png 3600w, images/CD2A3E/2400x1600.png 2400w, images/CD2A3E/1500x1000.png 1500w, images/CD2A3E/1200x800.png 1200w, images/CD2A3E/900x600.png 900w, images/CD2A3E/600x400.png 600w, images/CD2A3E/300x200.png 300w">
+            <img src="images/CD2A3E/300x200.png" width="75" height="50" alt="Red" /></a>
         <a rel="boxsharp-flag" title="A white image"
-            data-srcset="https://placehold.co/3600x2400/FFFFFF/CCCCCC.png 3600w, https://placehold.co/2400x1600/FFFFFF/CCCCCC.png 2400w, https://placehold.co/1500x1000/FFFFFF/CCCCCC.png 1500w, https://placehold.co/1200x800/FFFFFF/CCCCCC.png 1200w, https://placehold.co/900x600/FFFFFF/CCCCCC.png 900w, https://placehold.co/600x400/FFFFFF/CCCCCC.png 600w, https://placehold.co/300x200/FFFFFF/CCCCCC.png 300w">
-            <img src="https://placehold.co/300x200/FFFFFF/CCCCCC.png" width="75" height="50" alt="White" /></a>
+            data-srcset="images/FFFFFF/3600x2400.png 3600w, images/FFFFFF/2400x1600.png 2400w, images/FFFFFF/1500x1000.png 1500w, images/FFFFFF/1200x800.png 1200w, images/FFFFFF/900x600.png 900w, images/FFFFFF/600x400.png 600w, images/FFFFFF/300x200.png 300w">
+            <img src="images/FFFFFF/300x200.png" width="75" height="50" alt="White" /></a>
         <a rel="boxsharp-flag" title="A green image"
-            data-srcset="https://placehold.co/3600x2400/436F4D/FFFFFF.png 3600w, https://placehold.co/2400x1600/436F4D/FFFFFF.png 2400w, https://placehold.co/1500x1000/436F4D/FFFFFF.png 1500w, https://placehold.co/1200x800/436F4D/FFFFFF.png 1200w, https://placehold.co/900x600/436F4D/FFFFFF.png 900w, https://placehold.co/600x400/436F4D/FFFFFF.png 600w, https://placehold.co/300x200/436F4D/FFFFFF.png 300w">
-            <img src="https://placehold.co/300x200/436F4D/FFFFFF.png" width="75" height="50" alt="Green" /></a>
+            data-srcset="images/436F4D/3600x2400.png 3600w, images/436F4D/2400x1600.png 2400w, images/436F4D/1500x1000.png 1500w, images/436F4D/1200x800.png 1200w, images/436F4D/900x600.png 900w, images/436F4D/600x400.png 600w, images/436F4D/300x200.png 300w">
+            <img src="images/436F4D/300x200.png" width="75" height="50" alt="Green" /></a>
     </div>
 
     <h3>Navigable gallery with options</h3>
@@ -167,16 +169,16 @@
 
     <div class="example">
         <boxsharp-link group="flag" loop="true"
-            srcset="https://placehold.co/3600x2400/CD2A3E/FFFFFF.png 3600w, https://placehold.co/2400x1600/CD2A3E/FFFFFF.png 2400w, https://placehold.co/1500x1000/CD2A3E/FFFFFF.png 1500w, https://placehold.co/1200x800/CD2A3E/FFFFFF.png 1200w, https://placehold.co/900x600/CD2A3E/FFFFFF.png 900w, https://placehold.co/600x400/CD2A3E/FFFFFF.png 600w, https://placehold.co/300x200/CD2A3E/FFFFFF.png 300w">
-            <img src="https://placehold.co/300x200/CD2A3E/FFFFFF.png" width="75" height="50" alt="A red image" />
+            srcset="images/CD2A3E/3600x2400.png 3600w, images/CD2A3E/2400x1600.png 2400w, images/CD2A3E/1500x1000.png 1500w, images/CD2A3E/1200x800.png 1200w, images/CD2A3E/900x600.png 900w, images/CD2A3E/600x400.png 600w, images/CD2A3E/300x200.png 300w">
+            <img src="images/CD2A3E/300x200.png" width="75" height="50" alt="A red image" />
         </boxsharp-link>
         <boxsharp-link group="flag"
-            srcset="https://placehold.co/3600x2400/FFFFFF/CCCCCC.png 3600w, https://placehold.co/2400x1600/FFFFFF/CCCCCC.png 2400w, https://placehold.co/1500x1000/FFFFFF/CCCCCC.png 1500w, https://placehold.co/1200x800/FFFFFF/CCCCCC.png 1200w, https://placehold.co/900x600/FFFFFF/CCCCCC.png 900w, https://placehold.co/600x400/FFFFFF/CCCCCC.png 600w, https://placehold.co/300x200/FFFFFF/CCCCCC.png 300w">
-            <img src="https://placehold.co/300x200/FFFFFF/CCCCCC.png" width="75" height="50" alt="A white image" />
+            srcset="images/FFFFFF/3600x2400.png 3600w, images/FFFFFF/2400x1600.png 2400w, images/FFFFFF/1500x1000.png 1500w, images/FFFFFF/1200x800.png 1200w, images/FFFFFF/900x600.png 900w, images/FFFFFF/600x400.png 600w, images/FFFFFF/300x200.png 300w">
+            <img src="images/FFFFFF/300x200.png" width="75" height="50" alt="A white image" />
         </boxsharp-link>
         <boxsharp-link group="flag"
-            srcset="https://placehold.co/3600x2400/436F4D/FFFFFF.png 3600w, https://placehold.co/2400x1600/436F4D/FFFFFF.png 2400w, https://placehold.co/1500x1000/436F4D/FFFFFF.png 1500w, https://placehold.co/1200x800/436F4D/FFFFFF.png 1200w, https://placehold.co/900x600/436F4D/FFFFFF.png 900w, https://placehold.co/600x400/436F4D/FFFFFF.png 600w, https://placehold.co/300x200/436F4D/FFFFFF.png 300w">
-            <img src="https://placehold.co/300x200/436F4D/FFFFFF.png" width="75" height="50" alt="A green image" />
+            srcset="images/436F4D/3600x2400.png 3600w, images/436F4D/2400x1600.png 2400w, images/436F4D/1500x1000.png 1500w, images/436F4D/1200x800.png 1200w, images/436F4D/900x600.png 900w, images/436F4D/600x400.png 600w, images/436F4D/300x200.png 300w">
+            <img src="images/436F4D/300x200.png" width="75" height="50" alt="A green image" />
         </boxsharp-link>
     </div>
 
@@ -190,13 +192,10 @@
 
     <div class="example">
         <boxsharp-link>
-            <source media="(max-width: 600px)"
-                srcset="https://placehold.co/900x600/CD2A3E/FFFFFF.png 900w, https://placehold.co/600x400/CD2A3E/FFFFFF.png 600w, https://placehold.co/300x200/CD2A3E/FFFFFF.png 300w">
-            <source media="(orientation: portrait)"
-                srcset="https://placehold.co/900x600/FFFFFF/CCCCCC.png 900w, https://placehold.co/600x400/FFFFFF/CCCCCC.png 600w, https://placehold.co/300x200/FFFFFF/CCCCCC.png 300w">
-            <source
-                srcset="https://placehold.co/900x600/436F4D/FFFFFF.png 900w, https://placehold.co/600x400/436F4D/FFFFFF.png 600w, https://placehold.co/300x200/436F4D/FFFFFF.png 300w">
-            <img src="https://placehold.co/300x200/FFFFFF/CCCCCC.png" width="75" height="50" alt="A change of colors" />
+            <source media="(max-width: 600px)" srcset="images/CD2A3E/900x600.png 900w, images/CD2A3E/600x400.png 600w, images/CD2A3E/300x200.png 300w">
+            <source media="(orientation: portrait)" srcset="images/FFFFFF/900x600.png 900w, images/FFFFFF/600x400.png 600w, images/FFFFFF/300x200.png 300w">
+            <source srcset="images/436F4D/900x600.png 900w, images/436F4D/600x400.png 600w, images/436F4D/300x200.png 300w">
+            <img src="images/FFFFFF/300x200.png" width="75" height="50" alt="A change of colors" />
         </boxsharp-link>
     </div>
 
@@ -206,10 +205,9 @@
     <div class="example">
         <boxsharp-link>
             <source media="(hover: none) and (pointer: coarse)"
-                srcset="https://placehold.co/900x600/CD2A3E/FFFFFF.png 900w, https://placehold.co/600x400/CD2A3E/FFFFFF.png 600w, https://placehold.co/300x200/CD2A3E/FFFFFF.png 300w">
-            <source
-                srcset="https://placehold.co/900x600/436F4D/FFFFFF.png 900w, https://placehold.co/600x400/436F4D/FFFFFF.png 600w, https://placehold.co/300x200/436F4D/FFFFFF.png 300w">
-            <img src="https://placehold.co/300x200/FFFFFF/CCCCCC.png" width="75" height="50" alt="A change of colors" />
+                srcset="images/CD2A3E/900x600.png 900w, images/CD2A3E/600x400.png 600w, images/CD2A3E/300x200.png 300w">
+            <source srcset="images/436F4D/900x600.png 900w, images/436F4D/600x400.png 600w, images/436F4D/300x200.png 300w">
+            <img src="images/FFFFFF/300x200.png" width="75" height="50" alt="A change of colors" />
         </boxsharp-link>
     </div>
 
@@ -236,7 +234,7 @@
 
     <div class="example">
         <figure>
-            <a rel="boxsharp"
+            <a href="#" rel="boxsharp"
                 data-srcset="https://placehold.co/3600x2400.png 3600w, https://placehold.co/2400x1600.png 2400w, https://placehold.co/1500x1000.png 1500w, https://placehold.co/1200x800.png 1200w, https://placehold.co/900x600.png 900w, https://placehold.co/600x400.png 600w, https://placehold.co/300x200.png 300w">
                 <img src="https://placehold.co/300x200.png" alt="A placeholder image" /></a>
             <figcaption>Photo by <a href="https://hunyadi.info.hu/levente/" target="_blank">Levente Hunyadi</a>.</figcaption>
@@ -259,7 +257,7 @@
             <code>data-srcset</code> attribute. There is a single resolution available, no matter the window size.
         </li>
         <li>
-            <a rel="boxsharp-link" class="hyperlink"
+            <a href="#" rel="boxsharp-link" class="hyperlink"
                 data-srcset="https://placehold.co/900x600.png 900w, https://placehold.co/600x400.png 600w, https://placehold.co/300x200.png 300w">Link</a>
             with a <code>data-srcset</code> but no <code>href</code> attribute. The image resolution is selected adaptively.
         </li>
@@ -331,7 +329,7 @@
 
     <div class="example">
         <boxsharp-link width="800" height="600" href="https://www.wikipedia.org/">
-            <img src="https://upload.wikimedia.org/wikipedia/en/8/80/Wikipedia-logo-v2.svg">
+            <img alt="Wikipedia logo" src="https://upload.wikimedia.org/wikipedia/en/8/80/Wikipedia-logo-v2.svg">
         </boxsharp-link>
     </div>
 
@@ -362,6 +360,10 @@
         |
         <boxsharp-link href="https://google.com/404.html">
             <span class="hyperlink">Frame</span>
+        </boxsharp-link>
+        |
+        <boxsharp-link>
+            <span class="hyperlink">Missing</span>
         </boxsharp-link>
     </p>
 </body>

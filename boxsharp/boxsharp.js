@@ -79,7 +79,7 @@ function HTML(tag, props = {}, ...children) {
  * Creates an SVG element.
  *
  * @param {string} tag - SVG element to create.
- * @param {Object<string, string>} [props={}] - SVG element attributes.
+ * @param {Object.<string, string>} [props={}] - SVG element attributes.
  * @param {SVGElement[]} children - Direct descendants of the SVG element to create.
  */
 function SVG(tag, props = {}, ...children) {
@@ -96,10 +96,10 @@ function SVG(tag, props = {}, ...children) {
  * Generates a data URI with the specified MIME type.
  *
  * @param {string} content - Data to encode.
- * @param {string} [mimeType] - MIME type (default is `text/plain`).
+ * @param {string} mimeType - MIME type (default is `text/plain`).
  * @returns {string} - Data encapsulated in a data URI.
  */
-function createCSSDataURL(content, mimeType = "text/plain") {
+function createCSSDataURL(content, mimeType) {
     const encoder = new TextEncoder();
     const uint8Array = encoder.encode(content);
     const base64 = btoa(String.fromCharCode(...uint8Array));
@@ -370,7 +370,7 @@ user-select: none;
  * Serializes an object to and hydrates an object from a plain JSON string such that it can be persisted as `history.state`.
  */
 class Serializable {
-    /** @type {Object<string, { new(): any }>} - Maps class names to class constructors. */
+    /** @type {Object.<string, { new(): any }>} - Maps class names to class constructors. */
     static #registry = {};
 
     /**
@@ -703,10 +703,6 @@ class BoxsharpItem extends Serializable {
      * @returns {BoxsharpItem}
      */
     static fromLink(anchor) {
-        if (!(anchor instanceof HTMLAnchorElement || anchor instanceof BoxsharpLink)) {
-            throw new Error("expected: either `a` or `boxsharp-link` element");
-        }
-
         /** @type {string | undefined} */
         let imageURL;
         /** @type {?ImageSourceSet} */
@@ -741,7 +737,7 @@ class BoxsharpItem extends Serializable {
                     imageURL = url.toString();
                 } else if (/\.(mov|mpe?g|mp4|ogg|webm)$/i.test(url.pathname)) {
                     videoURL = url.toString();
-                } else {
+                } else if (url.hostname != location.hostname) {
                     frameURL = url.toString();
                 }
             }
@@ -775,23 +771,21 @@ class BoxsharpItem extends Serializable {
         } else {
             elem = video.querySelector("video");
         }
-        if (!elem) {
-            throw new Error("expected: a wrapped `video` element");
-        }
-
-        /** @type {VideoSource[]} */
-        const sources = [];
-        elem.querySelectorAll("source").forEach(source => {
-            sources.push(VideoSource.create(source.src, source.type));
-        });
-        if (!sources.length && elem.src) {
-            sources.push(VideoSource.create(elem.src));
-        }
 
         const item = new BoxsharpItem();
-        item.image = elem.poster;
-        item.video = sources;
-        item.caption = this.#getCaption(elem);
+        if (elem) {
+            /** @type {VideoSource[]} */
+            const sources = [];
+            elem.querySelectorAll("source").forEach(source => {
+                sources.push(VideoSource.create(source.src, source.type));
+            });
+            if (!sources.length && elem.src) {
+                sources.push(VideoSource.create(elem.src));
+            }
+            item.image = elem.poster;
+            item.video = sources;
+            item.caption = this.#getCaption(elem);
+        }
         return item;
     }
 }
@@ -825,6 +819,17 @@ function matchMedia(sources) {
  */
 function isVisible(elem) {
     return !elem.classList.contains("hidden");
+}
+
+/**
+ * Shows or hides an element.
+ *
+ * @param {HTMLElement} elem - The element whose visibility to change.
+ * @param {boolean} state - `true` to show and `false` to hide the element.
+ * @returns {void}
+ */
+function setVisible(elem, state) {
+    elem.classList.toggle("hidden", !state);
 }
 
 class BoxsharpDialogOptions {
@@ -909,8 +914,10 @@ class BoxsharpDialog extends HTMLElement {
         });
 
         this.reset();
-        this.#backdrop.addEventListener("click", (ev) => {
-            if (ev.target === this.#backdrop && !isVisible(this.#draggable)) {
+
+        const backdrop = this.#backdrop;
+        backdrop.addEventListener("click", (ev) => {
+            if (ev.target === backdrop && !isVisible(this.#draggable)) {
                 this.close();
             }
         });
@@ -924,6 +931,7 @@ class BoxsharpDialog extends HTMLElement {
             }
         };
         expander.addEventListener("click", clickCallback);
+
         const image = this.#image;
         image.addEventListener("dblclick", clickCallback);
 
@@ -940,42 +948,28 @@ class BoxsharpDialog extends HTMLElement {
         });
 
         // navigation with keys
+        /** @type {Object.<string, (() => void)>} */
+        const keyHandlers = {
+            "Escape": () => this.close(),
+            "ArrowLeft": () => this.#prev(),
+            "ArrowRight": () => this.#next(),
+            "Home": () => this.#first(),
+            "End": () => this.#last()
+        };
         this.#keydownCallback = (ev) => {
             if (!isVisible(this.#backdrop)) {
                 return;
             }
 
-            let cancel = true;
-            switch (ev.key) {
-                case "Escape":
-                    if (isVisible(this.#backdrop)) {
-                        this.close();
-                    }
-                    break;
-                case "ArrowLeft":
-                    this.#prev();
-                    break;
-                case "ArrowRight":
-                    this.#next();
-                    break;
-                case "Home":
-                    this.#first();
-                    break;
-                case "End":
-                    this.#last();
-                    break;
-                default:
-                    cancel = false;
-                    break;
-            }
-            if (cancel) {
+            const handler = keyHandlers[ev.key];
+            if (handler) {
+                handler();
                 ev.preventDefault();
             }
         };
         document.addEventListener("keydown", this.#keydownCallback);
 
         // navigation with swipe actions
-        const backdrop = this.#backdrop;
         let startX = 0;
         let endX = 0;
         backdrop.addEventListener("touchstart", (ev) => {
@@ -1006,7 +1000,7 @@ class BoxsharpDialog extends HTMLElement {
                 return;
             }
 
-            expander.classList.toggle("hidden", !this.#isExpandable());
+            setVisible(expander, this.#isExpandable());
         });
         imageObserver.observe(this.#figure);
     }
@@ -1037,8 +1031,8 @@ class BoxsharpDialog extends HTMLElement {
     reset() {
         this.#sizeObserver.disconnect();
 
-        this.#backdrop.classList.add("hidden");
-        this.#progress.classList.add("hidden");
+        setVisible(this.#backdrop, false);
+        setVisible(this.#progress, false);
 
         const figure = this.#figure;
         figure.classList.remove("zoom-from");
@@ -1051,7 +1045,7 @@ class BoxsharpDialog extends HTMLElement {
         };
 
         const picture = this.#picture;
-        picture.classList.add("hidden");
+        setVisible(picture, false);
         const image = this.#image;
         image.remove();
         removeAttributes(image, ["src", "srcset", "sizes", "alt", "style"]);
@@ -1059,11 +1053,11 @@ class BoxsharpDialog extends HTMLElement {
         picture.append(image);
 
         const draggable = this.#draggable;
-        draggable.classList.add("hidden");
+        setVisible(draggable, false);
         draggable.removeAttribute("src");
 
         const video = this.#video;
-        video.classList.add("hidden");
+        setVisible(video, false);
         video.pause();
         video.currentTime = 0;
         video.textContent = "";
@@ -1071,10 +1065,10 @@ class BoxsharpDialog extends HTMLElement {
         video.load();
 
         const iframe = this.#iframe;
-        iframe.classList.add("hidden");
+        setVisible(iframe, false);
         removeAttributes(iframe, ["src", "width", "height"]);
 
-        this.#unavailable.classList.add("hidden");
+        setVisible(this.#unavailable, false);
 
         const caption = this.#figcaption;
         caption.textContent = "";  // remove all children
@@ -1090,7 +1084,7 @@ class BoxsharpDialog extends HTMLElement {
      */
     hide() {
         this.reset();
-        this.#backdrop.classList.remove("hidden");
+        setVisible(this.#backdrop, true);
         this.#figure.classList.add("zoom-from");
     }
 
@@ -1157,8 +1151,8 @@ class BoxsharpDialog extends HTMLElement {
      */
     open(item, options) {
         const { prev, next } = options;
-        this.#prevNav.classList.toggle("hidden", !prev);
-        this.#nextNav.classList.toggle("hidden", !next);
+        setVisible(this.#prevNav, prev);
+        setVisible(this.#nextNav, next);
 
         this.hide();
         requestAnimationFrame(() => {
@@ -1174,9 +1168,10 @@ class BoxsharpDialog extends HTMLElement {
      */
     #load(item) {
         const showLoadingTimeout = setTimeout(() => {
-            this.#progress.classList.remove("hidden");
+            setVisible(this.#progress, true);
         }, 500);
 
+        const unavailable = this.#unavailable;
         const { image, source, video, frame, width, height } = item;
         if (video.length) {
             const videoElement = this.#video;
@@ -1184,12 +1179,12 @@ class BoxsharpDialog extends HTMLElement {
                 videoElement.removeEventListener("error", onVideoError);
                 videoElement.width = videoElement.videoWidth;
                 videoElement.height = videoElement.videoHeight;
-                videoElement.classList.remove("hidden");
+                setVisible(videoElement, true);
                 this.#show(item, showLoadingTimeout);
             };
             const onVideoError = () => {
                 videoElement.removeEventListener("loadedmetadata", onVideoLoaded);
-                this.#unavailable.classList.remove("hidden");
+                setVisible(unavailable, true);
                 this.#show(item, showLoadingTimeout);
             };
             videoElement.addEventListener("loadedmetadata", onVideoLoaded, { once: true });
@@ -1217,17 +1212,17 @@ class BoxsharpDialog extends HTMLElement {
                 frameElement.height = height + "";
             }
             frameElement.addEventListener("load", () => {
-                frameElement.classList.remove("hidden");
+                setVisible(frameElement, true);
                 this.#show(item, showLoadingTimeout);
             }, { once: true });
         } else if (image || source.length) {
             const preloader = new Image();
             preloader.addEventListener("load", () => {
-                this.#picture.classList.remove("hidden");
+                setVisible(this.#picture, true);
                 this.#show(item, showLoadingTimeout);
             }, { once: true });
             preloader.addEventListener("error", () => {
-                this.#unavailable.classList.remove("hidden");
+                setVisible(unavailable, true);
                 this.#show(item, showLoadingTimeout);
             }, { once: true });
 
@@ -1238,6 +1233,7 @@ class BoxsharpDialog extends HTMLElement {
                 preloader.src = image;
             }
         } else {
+            setVisible(unavailable, true);
             this.#show(item, showLoadingTimeout);
         }
     }
@@ -1253,7 +1249,7 @@ class BoxsharpDialog extends HTMLElement {
         const { image, source, alt, caption } = item;
 
         clearTimeout(showLoadingTimeout);
-        this.#progress.classList.add("hidden");
+        setVisible(this.#progress, false);
 
         const pictureElement = this.#picture;
         const imageElement = this.#image;
@@ -1316,18 +1312,18 @@ class BoxsharpDialog extends HTMLElement {
         if (isExpanded) {
             observer.disconnect();
 
-            expander.classList.remove("hidden");
-            picture.classList.add("hidden");
+            setVisible(expander, true);
+            setVisible(picture, false);
             const srcset = ImageSourceSet.parse(this.#image.srcset);
             if (srcset && !srcset.empty) {
                 draggable.setAttribute("src", srcset.highest());
             }
-            draggable.classList.remove("hidden");
+            setVisible(draggable, true);
             this.#figcaption.removeAttribute("style");
         } else {
-            draggable.classList.add("hidden");
+            setVisible(draggable, false);
             draggable.removeAttribute("src");
-            picture.classList.remove("hidden");
+            setVisible(picture, true);
 
             observer.observe(this.#image);
         }
@@ -1401,8 +1397,10 @@ class BoxsharpDialog extends HTMLElement {
      * @returns {void}
      */
     close() {
-        this.reset();
-        this.dispatchEvent(new CustomEvent("closed"));
+        if (isVisible(this.#backdrop)) {
+            this.reset();
+            this.dispatchEvent(new CustomEvent("closed"));
+        }
     }
 
     /**

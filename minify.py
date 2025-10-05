@@ -184,9 +184,9 @@ def _data_url_substitute(js: str) -> str:
         if node.attrib:
             s.write(f",{json.dumps(node.attrib)}")
         else:
-            s.write(",{}")
+            s.write(", {}")
         for child in node:
-            s.write(",")
+            s.write(", ")
             _visit(child, s)
         s.write(")")
 

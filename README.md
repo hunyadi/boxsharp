@@ -36,12 +36,21 @@ This contains the JavaScript code only, which loads `boxsharp.css` from the same
 
 ## Syntax
 
-boxsharp is implemented as a [web component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components). When a `<boxsharp-link>` element is added to the HTML DOM, its attributes and child elements are analyzed to determine how the image, video or other resource appears when the user clicks the element to open the pop-up window. The following information sources are inspected for images:
+boxsharp is implemented as a [web component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components). When a `<boxsharp-link>` element is added to the HTML DOM, its attributes and child elements are analyzed to determine how the image, video or other resource appears when the user clicks the element to open the pop-up window.
+
+The following information sources are inspected for images:
 
 * `href` attribute of `<boxsharp-link>`. If `href` points to an image file, this file is added as a source.
 * `srcset` attribute. `srcset` should use the width descriptor, not the pixel density descriptor.
 * `<source>` elements that are direct children of `<boxsharp-link>`. Attributes `srcset`, `type` and `media` are extracted.
 * `srcset` and `src` attributes of a descendant `<img>` element. This is provided as a convenience feature to enlarge an image already shown on the page.
+
+```html
+<boxsharp-link href="URL" srcset="SRCSET">
+    <source srcset="SRCSET" type="TYPE" media="MEDIA">...
+    <img alt="TEXT" src="URL" srcset="SRCSET">
+</boxsharp-link>
+```
 
 The following information is extracted for a video:
 
@@ -50,13 +59,42 @@ The following information is extracted for a video:
 * `<source>` elements in a descendant `<video>` element. Attributes `src`, `type` and `media` of any `<source>` child elements of `<video>` are extracted. This is a convenience feature to play a video in larger size.
 * `src` attribute `src` of a descendant `<video>` element.
 
+```html
+<boxsharp-link href="URL">
+    <source src="URL" type="TYPE" media="MEDIA">...
+    <video src="URL">
+        <source src="URL" type="TYPE" media="MEDIA">...
+    </video>
+</boxsharp-link>
+```
+
 Captions for items are extracted from the following sources:
 
 * `<figcaption>` in an encapsulated `<figure>` element. You can put arbitrary HTML in `<figcaption>`.
 * `<figcaption>` in an encapsulating `<figure>` element. This lets us use `<boxsharp-link>` in a `<figure>` element and read the caption text from the sibling element `<figcaption>`.
 * `title` attribute
 
+```html
+<boxsharp-link href="URL" title="TEXT">
+    <figure>
+        <img alt="TEXT" src="URL" title="TEXT">
+        <figcaption>HTML</figcaption>
+    </figure>
+</boxsharp-link>
+```
+
 Some target items don't have an intrinsic size, e.g. when the pop-up window displays a web page from another site. In this case, you should explicitly set attributes `width` and `height` on `<boxsharp-link>`.
+
+```html
+<boxsharp-link href="URL" width="INT" height="INT">HTML</boxsharp-link>
+```
+
+You can group related items into a collection using the `group` attribute. Visitors to the site are able to navigate between items that are assigned the same identifier without closing the pop-up window using keys *left* and *right* or swipe gestures. Related `<boxsharp-link>` elements can be defined anywhere in the DOM, they don't have to be sibling elements.
+
+```html
+<boxsharp-link href="URL" group="IDENTIFIER">HTML</boxsharp-link>
+<boxsharp-link href="URL" group="IDENTIFIER">HTML</boxsharp-link>...
+```
 
 ## Classic syntax
 
