@@ -13,8 +13,8 @@
 - **Optimized image loading.** Automatically selects the smallest image that fills the viewport.
 - **Responsive design.** Oversized content is scaled down to fit the browser window.
 - **Easy integration.** Includes a simple API and ready-to-use code snippets for fast setup.
-- **Lightweight.** Minimal network load for faster performance.
-- **No dependencies.** Built with 100% CSS and pure JavaScript (ES2020, Web Components); no third-party libraries required.
+- **Lightweight.** Less than 7 KB when gzipped.
+- **No dependencies.** Built with 100% CSS and pure JavaScript (ES2020, Web Components).
 
 ## Setup
 
@@ -35,6 +35,62 @@ For debug mode, use the following declaration instead:
 This contains the JavaScript code only, which loads `boxsharp.css` from the same directory where the code file is located.
 
 ## Syntax
+
+boxsharp is implemented as a [web component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components). When a `<boxsharp-link>` element is added to the HTML DOM, its attributes and child elements are analyzed to determine how the image, video or other resource appears when the user clicks the element to open the pop-up window. The following information sources are inspected for images:
+
+* `href` attribute of `<boxsharp-link>`. If `href` points to an image file, this file is added as a source.
+* `srcset` attribute. `srcset` should use the width descriptor, not the pixel density descriptor.
+* `<source>` elements that are direct children of `<boxsharp-link>`. Attributes `srcset`, `type` and `media` are extracted.
+* `srcset` and `src` attributes of a descendant `<img>` element. This is provided as a convenience feature to enlarge an image already shown on the page.
+
+The following information is extracted for a video:
+
+* `href` attribute of `<boxsharp-link>`. If `href` points to a video file, this file is added as a source.
+* `<source>` elements that are direct children of `<boxsharp-link>`. Attributes `src`, `type` and `media` are extracted.
+* `<source>` elements in a descendant `<video>` element. Attributes `src`, `type` and `media` of any `<source>` child elements of `<video>` are extracted. This is a convenience feature to play a video in larger size.
+* `src` attribute `src` of a descendant `<video>` element.
+
+Captions for items are extracted from the following sources:
+
+* `<figcaption>` in an encapsulated `<figure>` element. You can put arbitrary HTML in `<figcaption>`.
+* `<figcaption>` in an encapsulating `<figure>` element. This lets us use `<boxsharp-link>` in a `<figure>` element and read the caption text from the sibling element `<figcaption>`.
+* `title` attribute
+
+Some target items don't have an intrinsic size, e.g. when the pop-up window displays a web page from another site. In this case, you should explicitly set attributes `width` and `height` on `<boxsharp-link>`.
+
+## Classic syntax
+
+For legacy use cases, a classic syntax is available that relies on attributes of the anchor element `<a>` as opposed to `<boxsharp-link>`. You need to invoke the `scan` static method to analyze the attributes of an `<a>` element:
+
+```javascript
+import { BoxsharpCollection } from "./boxsharp/boxsharp.min.js";
+document.addEventListener("DOMContentLoaded", () => {
+    BoxsharpCollection.scan("boxsharp");
+});
+```
+
+Once you call `scan`, the code inspects attributes `href`, `rel`, `data-srcset` and `title`, and looks for an `<img>` element wrapped in `<a>` for attributes `src`, `srcset` and `alt`. In the classic syntax, `rel` distinguishes normal links from boxsharp links:
+
+* Anchors with a `rel` of `NAME` open a pop-up window when clicked, showing the resource referenced in `href`. `NAME` defaults to `boxsharp` (see above) but you can use any name you prefer.
+* Anchors with a `rel` of `NAME-*` form a collection (gallery) in which the user is able to navigate between the items without closing the pop-up window. `*` means any sequence of characters. You have to use the same `rel` attribute for items in the same collection.
+
+Captions are extracted from the same sources as with the modern syntax. However, anchor elements cannot nest in HTML, which prevents using links in `<figcaption>` when the entire `<figure>` element is wrapped in the defining `<a rel="...">` element. We recommend that you place the `<a rel="...">` element inside `<figure>`.
+
+## How it works
+
+Information extracted from `<boxsharp-link>` elements and their descendants is used to set attributes of and populate elements `<picture>` and `<video>` in a `<figure>` element. These elements are part of a web component `<boxsharp-dialog>`, which represents the lightbox pop-up window.
+
+For an image, the attributes `srcset` and `sizes` are set on `<source>` elements inside a `<picture>` element. This helps the browser choose the optimal image given the current window size. `sizes` is configured with the value `(max-width: ${width}px) 100vw, ${width}px` where `${width}` is the largest image width. This ensures that the image scales down proportionally but doesn't grow beyond its natural size.
+
+For a video, `<source>` elements of a `<video>` element are populated in a similar way. If the target item represents an external resource, e.g. a YouTube video or an another site, an `<iframe>` element is configured.
+
+Size changes are intercepted via the `resize` event on `window`, and `ResizeObserver` instances registered on `<img>` and `<video>`. `<figcaption>` width is set to the current `<img>` or `<video>` width. If the elements in the pop-up window would overflow their container (i.e. scroll height is greater than client height), the width of `<img>` and `<video>` is reduced, causing their height to shrink. `<img>` and `<video>` always maintain their aspect ratio.
+
+When an image doesn't fit in the browser window dimensions, the *expand* icon is shown. The enlarged view is implemented with a helper web component `<boxsharp-draggable>`. This component captures events triggered by drag-and-drop executed with a mouse or a gesture.
+
+boxsharp interoperates with browser navigation events *back* and *forward* by pushing state to `history`. The *back* button lets you close the pop-up window, and *forward* reopens the window displaying the same image shown earlier. We represent items displayed in the lightbox pop-up window in serializable data structures such that they can be pushed as history states.
+
+## Examples
 
 **Use case:** Figure with caption opens in larger size in pop-up window.
 

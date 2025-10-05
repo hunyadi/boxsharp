@@ -61,8 +61,8 @@
         <li><strong>Optimized image loading.</strong><br>Automatically selects the smallest image that fills the viewport.</li>
         <li><strong>Responsive design.</strong><br>Oversized content is scaled down to fit the browser window.</li>
         <li><strong>Easy integration.</strong><br>Includes a simple API and ready-to-use code snippets for fast setup.</li>
-        <li><strong>Lightweight.</strong><br>Minimal network load for faster performance.</li>
-        <li><strong>No dependencies.</strong><br>Built with 100% CSS and pure JavaScript (ES2020, Web Components); no third-party libraries required.</li>
+        <li><strong>Lightweight.</strong><br>Less than 7 KB when gzipped.</li>
+        <li><strong>No dependencies.</strong><br>Built with 100% CSS and pure JavaScript (ES2020, Web Components).</li>
     </ul>
 
     <h2>How to use</h2>
@@ -122,15 +122,6 @@
                 href="https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Responsive_images#resolution_switching_different_sizes">resolution switching
                 with different sizes</a>.</li>
     </ol>
-
-    <h2>How it works</h2>
-
-    <p>When the pop-up window opens, it reads the <code>data-srcset</code> or the <code>srcset</code> attribute, and configures the <code>srcset</code> and
-        <code>sizes</code> attributes of an <code>&lt;img&gt;</code> element in the lightbox pop-up window accordingly, ensuring the browser chooses the optimal
-        image given the current window size. Captions are extracted from the <code>alt</code> or <code>title</code> attribute, or a
-        <code>&lt;figcaption&gt;</code> of an encapsulating or encapsulated <code>&lt;figure&gt;</code> element. Items that are grouped into a collection form a
-        navigable set.
-    </p>
 
     <h2>Examples</h2>
 
@@ -203,6 +194,19 @@
                 srcset="https://placehold.co/900x600/CD2A3E/FFFFFF.png 900w, https://placehold.co/600x400/CD2A3E/FFFFFF.png 600w, https://placehold.co/300x200/CD2A3E/FFFFFF.png 300w">
             <source media="(orientation: portrait)"
                 srcset="https://placehold.co/900x600/FFFFFF/CCCCCC.png 900w, https://placehold.co/600x400/FFFFFF/CCCCCC.png 600w, https://placehold.co/300x200/FFFFFF/CCCCCC.png 300w">
+            <source
+                srcset="https://placehold.co/900x600/436F4D/FFFFFF.png 900w, https://placehold.co/600x400/436F4D/FFFFFF.png 600w, https://placehold.co/300x200/436F4D/FFFFFF.png 300w">
+            <img src="https://placehold.co/300x200/FFFFFF/CCCCCC.png" width="75" height="50" alt="A change of colors" />
+        </boxsharp-link>
+    </div>
+
+    <p>The media query <code>(hover: none) and (pointer: coarse)</code> typically matches mobile devices but not desktop computers. This lets us provide a
+        different set of images for mobile and desktop. The following example displays a red image on mobile but a green one on desktop.</p>
+
+    <div class="example">
+        <boxsharp-link>
+            <source media="(hover: none) and (pointer: coarse)"
+                srcset="https://placehold.co/900x600/CD2A3E/FFFFFF.png 900w, https://placehold.co/600x400/CD2A3E/FFFFFF.png 600w, https://placehold.co/300x200/CD2A3E/FFFFFF.png 300w">
             <source
                 srcset="https://placehold.co/900x600/436F4D/FFFFFF.png 900w, https://placehold.co/600x400/436F4D/FFFFFF.png 600w, https://placehold.co/300x200/436F4D/FFFFFF.png 300w">
             <img src="https://placehold.co/300x200/FFFFFF/CCCCCC.png" width="75" height="50" alt="A change of colors" />

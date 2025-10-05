@@ -3,6 +3,7 @@
  * @author Levente Hunyadi
  * @version 0.1
  * @copyright 2025 Levente Hunyadi
+ * @license MIT
  * @see https://hunyadi.info.hu/projects/boxsharp
  * @see https://github.com/hunyadi/boxsharp
 **/
@@ -737,9 +738,7 @@ class BoxsharpItem extends Serializable {
             const url = URL.parse(href, document.URL);
             if (url) {
                 if (/\.(jpe?g|png|gif|webp|svg|bmp|tiff|avif)$/i.test(url.pathname)) {
-                    if (!imageURL) {
-                        imageURL = url.toString();
-                    }
+                    imageURL = url.toString();
                 } else if (/\.(mov|mpe?g|mp4|ogg|webm)$/i.test(url.pathname)) {
                     videoURL = url.toString();
                 } else {
@@ -918,8 +917,10 @@ class BoxsharpDialog extends HTMLElement {
 
         const expander = this.#expander;
         const clickCallback = () => {
-            if (this.#isExpandable()) {
-                this.#expand(!this.#isExpanded());
+            if (this.#isExpanded()) {
+                this.#expand(false);
+            } else if (this.#isExpandable()) {
+                this.#expand(true);
             }
         };
         expander.addEventListener("click", clickCallback);
@@ -1000,16 +1001,12 @@ class BoxsharpDialog extends HTMLElement {
         window.addEventListener("resize", this.#resizeCallback);
 
         // update whether expander icon is visible when container size changes
-        let lastSrc;
         const imageObserver = new ResizeObserver(() => {
             if (this.#isExpanded()) {
                 return;
             }
 
-            if (image.currentSrc !== lastSrc) {
-                lastSrc = image.currentSrc;
-                expander.classList.toggle("hidden", !this.#isExpandable());
-            }
+            expander.classList.toggle("hidden", !this.#isExpandable());
         });
         imageObserver.observe(this.#figure);
     }
