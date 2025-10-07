@@ -655,6 +655,8 @@ class BoxsharpItem extends Serializable {
     video = [];
     /** @type {string | undefined} - `src` attribute value for a frame. */
     frame;
+    /** @type {string | undefined} - `id` of same-page content to display. */
+    id;
     /** @type {string | undefined} - Alternate text for the image or video. */
     alt;
     /** @type {string | undefined} - HTML shown below the image or video as a figure caption. */
@@ -712,6 +714,8 @@ class BoxsharpItem extends Serializable {
         /** @type {string | undefined} */
         let frameURL;
         /** @type {string | undefined} */
+        let id;
+        /** @type {string | undefined} */
         let alt;
 
         const thumbnail = anchor.querySelector("img");
@@ -737,8 +741,11 @@ class BoxsharpItem extends Serializable {
                     imageURL = url.toString();
                 } else if (/\.(mov|mpe?g|mp4|ogg|webm)$/i.test(url.pathname)) {
                     videoURL = url.toString();
-                } else if (url.hostname != location.hostname) {
+                } else if (url.host != location.host) {
                     frameURL = url.toString();
+                } else if (url.origin == location.origin && url.pathname == location.pathname && url.search == location.search && url.hash) {
+                    // fragment in the same document
+                    id = decodeURIComponent(url.hash).substring(1);
                 }
             }
         }
@@ -752,6 +759,7 @@ class BoxsharpItem extends Serializable {
             item.video.push(VideoSource.create(videoURL));
         }
         item.frame = frameURL;
+        item.id = id;
         item.alt = alt;
         item.caption = this.#getCaption(anchor);
         return item;
@@ -860,6 +868,8 @@ class BoxsharpDialog extends HTMLElement {
     /** @type {HTMLIFrameElement} */
     #iframe;
     /** @type {HTMLElement} */
+    #section;
+    /** @type {HTMLElement} */
     #unavailable;
     /** @type {HTMLElement} */
     #figure;
@@ -888,11 +898,12 @@ class BoxsharpDialog extends HTMLElement {
             this.#backdrop = HTML("div", { className: "backdrop" },
                 this.#figure = HTML("figure", {},
                     this.#draggable = /** @type {BoxsharpDraggable} */ (HTML("boxsharp-draggable")),
-                    this.#picture = /** @type {HTMLElement} */ (HTML("picture", {},
+                    this.#picture = HTML("picture", {},
                         this.#image = /** @type {HTMLImageElement} */ (HTML("img")),
-                    )),
+                    ),
                     this.#video = /** @type {HTMLVideoElement} */ (HTML("video", { controls: true })),
                     this.#iframe = /** @type {HTMLIFrameElement} */ (HTML("iframe", { allow: "fullscreen" })),
+                    this.#section = HTML("section", {}, HTML("slot")),
                     this.#unavailable = HTML("div", { className: "unavailable", textContent: "🖼️" }),
                     HTML("nav", { class: "pagination" },
                         this.#prevNav = HTML("a", { href: "#", className: "prev", ariaLabel: "←" }),
@@ -1068,6 +1079,11 @@ class BoxsharpDialog extends HTMLElement {
         setVisible(iframe, false);
         removeAttributes(iframe, ["src", "width", "height"]);
 
+        const section = this.#section;
+        setVisible(section, false);
+        section.removeAttribute("style");
+        this.textContent = "";  // clear content originating from light DOM
+
         setVisible(this.#unavailable, false);
 
         const caption = this.#figcaption;
@@ -1172,7 +1188,7 @@ class BoxsharpDialog extends HTMLElement {
         }, 500);
 
         const unavailable = this.#unavailable;
-        const { image, source, video, frame, width, height } = item;
+        const { image, source, video, frame, id, width, height } = item;
         if (video.length) {
             const videoElement = this.#video;
             const onVideoLoaded = () => {
@@ -1215,7 +1231,28 @@ class BoxsharpDialog extends HTMLElement {
                 setVisible(frameElement, true);
                 this.#show(item, showLoadingTimeout);
             }, { once: true });
+        } else if (id) {
+            const node = document.getElementById(id);
+            if (node) {
+                const section = this.#section;
+                if (width) {
+                    section.style.width = `${width}px`;
+                }
+                if (height) {
+                    section.style.height = `${height}px`;
+                }
+                const content = /** @type {HTMLElement} */ (node.cloneNode(true));
+                if (content.style.display == "none") {
+                    content.style.removeProperty("display");
+                }
+                this.append(content);
+                setVisible(section, true);
+            } else {
+                setVisible(unavailable, true);
+            }
+            this.#show(item, showLoadingTimeout);
         } else if (image || source.length) {
+            // check image last, frame or video content may have poster image
             const preloader = new Image();
             preloader.addEventListener("load", () => {
                 setVisible(this.#picture, true);
@@ -1441,7 +1478,7 @@ class BoxsharpCollectionOptions {
 class BoxsharpCollection {
     #key = randomIdentifier();
     /** @type {BoxsharpDialog} */
-    #lightbox;
+    #dialog;
     /** @type {string[]} - An array of serialized `BoxsharpItem` elements. */
     #items;
     /** @type {BoxsharpCollectionOptions} */
@@ -1458,12 +1495,12 @@ class BoxsharpCollection {
     /**
      * Creates a navigable collection of items to be shown in a pop-up window.
      *
-     * @param {BoxsharpDialog} lightbox - A pop-up window instance.
+     * @param {BoxsharpDialog} dialog - A pop-up window instance.
      * @param {BoxsharpItem[]} items - An array items to show.
      * @param {BoxsharpCollectionOptions} [options] - Configures the behavior of the pop-up window when the collection is shown.
      */
-    constructor(lightbox, items, options) {
-        this.#lightbox = lightbox;
+    constructor(dialog, items, options) {
+        this.#dialog = dialog;
         this.#items = items.map(item => item.toJSON());
         this.#options = options ?? new BoxsharpCollectionOptions();
         this.#index = 0;
@@ -1483,7 +1520,7 @@ class BoxsharpCollection {
             // `event.state` reflects target state, not source state
             const state = ev.state;
             if (state && state.boxsharp) {
-                if (!this.#lightbox.visible) {
+                if (!this.#dialog.visible) {
                     /** @type {{key: string, item: string}} */
                     const { key, item } = state.boxsharp;
                     if (key === this.#key) {
@@ -1571,17 +1608,17 @@ class BoxsharpCollection {
         }
 
         if (index >= 0) {
+            const dialog = this.#dialog;
             const navigateCallback = this.#navigateCallback = (ev) => { this.#navigate(ev.detail.action); };
             const closedCallback = this.#closedCallback = () => {
-                lightbox.removeEventListener("navigate", navigateCallback);
+                dialog.removeEventListener("navigate", navigateCallback);
                 const state = history.state;
                 if (state && state.boxsharp) {
                     history.back();  // return to previous state
                 }
             };
-            const lightbox = this.#lightbox;
-            lightbox.addEventListener("navigate", navigateCallback);
-            lightbox.addEventListener("closed", closedCallback, { once: true });
+            dialog.addEventListener("navigate", navigateCallback);
+            dialog.addEventListener("closed", closedCallback, { once: true });
             this.#show(index);
         }
     }
@@ -1593,22 +1630,22 @@ class BoxsharpCollection {
      * @returns {void}
      */
     reset(soonToOpen) {
-        const lightbox = this.#lightbox;
+        const dialog = this.#dialog;
         const closedCallback = this.#closedCallback;
         if (closedCallback) {
-            lightbox.removeEventListener("closed", closedCallback);
+            dialog.removeEventListener("closed", closedCallback);
             this.#closedCallback = null;
         }
         const navigateCallback = this.#navigateCallback;
         if (navigateCallback) {
-            lightbox.removeEventListener("navigate", navigateCallback);
+            dialog.removeEventListener("navigate", navigateCallback);
             this.#navigateCallback = null;
         }
-        if (lightbox.visible) {
+        if (dialog.visible) {
             if (soonToOpen) {
-                lightbox.hide();
+                dialog.hide();
             } else {
-                lightbox.reset();
+                dialog.reset();
             }
         }
     }
@@ -1636,7 +1673,7 @@ class BoxsharpCollection {
         dialogOptions.prev = loop || index > 0;
         dialogOptions.next = loop || index < this.#items.length - 1;
         requestAnimationFrame(() => {
-            this.#lightbox.open(Serializable.fromJSON(item), dialogOptions);
+            this.#dialog.open(Serializable.fromJSON(item), dialogOptions);
         });
     }
 
@@ -1720,15 +1757,12 @@ class BoxsharpCollection {
      * Anchors with a `rel` of `NAME-*` form a collection (gallery) in which the user is able to navigate between the items without closing the pop-up window.
      *
      * @param {string} [name] - The name to look for; defaults to `boxsharp`.
+     * @param {BoxsharpDialog} [dialog] - Lightbox pop-up window instance to open.
      * @returns {void}
      */
-    static scan(name) {
-        name ??= "boxsharp";
-
-        const lightbox = BoxsharpDialog.singleton();
-
+    static scan(name = "boxsharp", dialog = BoxsharpDialog.singleton()) {
         document.querySelectorAll(`a[rel=${CSS.escape(name)}]`).forEach((/** @type {HTMLAnchorElement} */ anchor) => {
-            const gallery = new BoxsharpCollection(lightbox, [BoxsharpItem.fromLink(anchor)]);
+            const gallery = new BoxsharpCollection(dialog, [BoxsharpItem.fromLink(anchor)]);
             gallery.#observe([anchor]);
         });
 
@@ -1746,7 +1780,7 @@ class BoxsharpCollection {
 
         Object.keys(dictionary).forEach(function (key) {
             const anchors = dictionary[key];
-            const gallery = new BoxsharpCollection(lightbox, anchors.map(anchor => BoxsharpItem.fromLink(anchor)));
+            const gallery = new BoxsharpCollection(dialog, anchors.map(anchor => BoxsharpItem.fromLink(anchor)));
             gallery.#observe(anchors);
         });
     }
@@ -1804,7 +1838,7 @@ class BoxsharpLink extends HTMLElement {
         const options = new BoxsharpCollectionOptions();
         options.loop = this.#getBooleanAttribute("loop") ?? options.loop;
 
-        const lightbox = BoxsharpDialog.singleton();
+        const dialog = BoxsharpDialog.singleton();
 
         /** @type {BoxsharpCollection | undefined} */
         let collection;
@@ -1814,7 +1848,7 @@ class BoxsharpLink extends HTMLElement {
             collection = map.get(group);
         }
         if (!collection) {
-            collection = new BoxsharpCollection(lightbox, [], options);
+            collection = new BoxsharpCollection(dialog, [], options);
             if (group) {
                 map.set(group, collection);
             }

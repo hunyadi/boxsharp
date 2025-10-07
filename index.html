@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <title>boxsharp: a responsive lightbox pop-up window with CSS3 and vanilla JavaScript</title>
     <meta name="description" content="Demo page for a lightweight pop-up window implementation that displays images, video and other content.">
-    <meta name="viewport" content="width=device-width">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="author" href="https://hunyadi.info.hu/levente">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
     <style>
@@ -19,16 +19,28 @@
             border-radius: 1em;
         }
 
+        img,
+        video {
+            max-width: 100%;
+        }
+
         .hyperlink {
             color: -webkit-link;
             cursor: pointer;
             text-decoration: underline;
+        }
+
+        #lorem-ipsum>p::first-letter {
+            initial-letter: 2 1;
+            font-weight: bold;
+            float: left;
         }
     </style>
     <script defer src="boxsharp/boxsharp.min.js" type="module"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <script defer type="module">
         import { BoxsharpCollection } from "./boxsharp/boxsharp.min.js";
+        import { generateText } from "./js/sample.js";
         document.addEventListener("DOMContentLoaded", () => {
             document.querySelectorAll("div.example").forEach(div => {
                 const pre = document.createElement("pre");
@@ -42,6 +54,8 @@
             hljs.highlightAll();
 
             BoxsharpCollection.scan();
+
+            generateText(document.getElementById("lorem-ipsum"));
         });
     </script>
 </head>
@@ -51,21 +65,23 @@
 
     <p><a href="https://hunyadi.info.hu/projects/boxsharp/">Demo page</a> | <a href="https://github.com/hunyadi/boxsharp/">Project page</a></p>
 
-    <h2>Features</h2>
+    <section id="features">
+        <h2>Features</h2>
 
-    <ul>
-        <li><strong>Modern browser support.</strong><br>Works seamlessly in Chrome, Edge, Firefox, and Safari.</li>
-        <li><strong>Versatile content display.</strong><br>Handles images, videos, PDFs and external pages.</li>
-        <li><strong>Custom captions.</strong><br>Add description to each item using plain text or HTML tags.</li>
-        <li><strong>Flexible navigation.</strong><br>Navigate using buttons, keyboard (left/right arrows), mouse, or swipe gestures.</li>
-        <li><strong>History-aware.</strong><br>Supports browser <em>back</em> and <em>forward</em> buttons to close and reopen.</li>
-        <li><strong>Interactive image handling.</strong><br>Expand large images and pan by dragging.</li>
-        <li><strong>Optimized image loading.</strong><br>Automatically selects the smallest image that fills the viewport.</li>
-        <li><strong>Responsive design.</strong><br>Oversized content is scaled down to fit the browser window.</li>
-        <li><strong>Easy integration.</strong><br>Includes a simple API and ready-to-use code snippets for fast setup.</li>
-        <li><strong>Lightweight.</strong><br>Less than 7 KB when gzipped.</li>
-        <li><strong>No dependencies.</strong><br>Built with 100% CSS and pure JavaScript (ES2020, Web Components).</li>
-    </ul>
+        <ul>
+            <li><strong>Modern browser support.</strong><br>Works seamlessly in Chrome, Edge, Firefox, and Safari.</li>
+            <li><strong>Versatile content display.</strong><br>Handles images, videos, PDFs, same-page content and external pages.</li>
+            <li><strong>Custom captions.</strong><br>Add description to each item using plain text or HTML tags.</li>
+            <li><strong>Flexible navigation.</strong><br>Navigate using buttons, keyboard (left/right arrows), mouse, or swipe gestures.</li>
+            <li><strong>History-aware.</strong><br>Supports browser <em>back</em> and <em>forward</em> buttons to close and reopen.</li>
+            <li><strong>Interactive image handling.</strong><br>Expand large images and pan by dragging.</li>
+            <li><strong>Optimized image loading.</strong><br>Automatically selects the smallest image that fills the viewport.</li>
+            <li><strong>Responsive design.</strong><br>Oversized content is scaled down to fit the browser window.</li>
+            <li><strong>Easy integration.</strong><br>Includes a simple API and ready-to-use code snippets for fast setup.</li>
+            <li><strong>Lightweight.</strong><br>Less than 7 KB when gzipped.</li>
+            <li><strong>No dependencies.</strong><br>Built with 100% CSS and pure JavaScript (ES2020, Web Components).</li>
+        </ul>
+    </section>
 
     <h2>How to use</h2>
 
@@ -74,7 +90,7 @@
     <ol>
         <li>Copy <a href="boxsharp/boxsharp.min.js" download="boxsharp.min.js">boxsharp.min.js</a> to your web server.</li>
         <li>Add the following to the <code>&lt;head&gt;</code> section of your HTML (using the appropriate location):<br>
-            <pre>&lt;script defer src="path/to/boxsharp.min.js" type="module"&gt;&lt;/script&gt;</pre>
+            <pre><code class="language-html">&lt;script defer src="path/to/boxsharp.min.js" type="module"&gt;&lt;/script&gt;</code></pre>
         </li>
         <li>Proceed with <em>modern</em> or <em>classic</em> syntax.</li>
     </ol>
@@ -85,7 +101,7 @@
         <li>Copy <a href="boxsharp/boxsharp.css" download="boxsharp.css">boxsharp.css</a> and <a href="boxsharp/boxsharp.js"
                 download="boxsharp.js">boxsharp.js</a> to your web server.</li>
         <li>Add the following to the <code>&lt;head&gt;</code> section of your HTML (using the appropriate location):<br>
-            <pre>&lt;script defer src="path/to/boxsharp.js" type="module"&gt;&lt;/script&gt;</pre>
+            <pre><code class="language-html">&lt;script defer src="path/to/boxsharp.js" type="module"&gt;&lt;/script&gt;</code></pre>
         </li>
         <li>Proceed with <em>modern</em> or <em>classic</em> syntax.</li>
     </ol>
@@ -108,14 +124,13 @@
 
     <ol>
         <li>Ensure you have the initializer in the <code>&lt;head&gt;</code> section of your HTML (using the appropriate location):<br>
-            <pre>
-&lt;script defer type="module"&gt;
+            <pre><code class="language-html">&lt;script defer type="module"&gt;
     import { BoxsharpCollection } from "./path/to/boxsharp.js";
     document.addEventListener("DOMContentLoaded", () => {
         BoxsharpCollection.scan();
     });
 &lt;/script&gt;
-</pre>
+</code></pre>
         </li>
         <li>Find the text or thumbnail image that you want to trigger a pop-up window when clicked.</li>
         <li>Wrap the text or image in an <code>&lt;a&gt;</code> element.</li>
@@ -342,6 +357,39 @@
         <boxsharp-link width="800" height="600"
             href="https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf#page=2&pagemode=none&view=FitH">
             <span class="hyperlink">PDF</span>
+        </boxsharp-link>
+    </div>
+
+    <h3>Same-page content</h3>
+
+    <p>The next example shows the boxsharp list of features in the pop-up window. This content is defined earlier in the document in a
+        <code>&lt;section&gt;</code> element, and only its <code>id</code> is referenced here with a <a
+            href="https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Fragment">URL fragment</a>. The content is cloned rather than moved to
+        the pop-up window.
+    </p>
+
+    <div class="example">
+        <boxsharp-link href="#features">
+            <span class="hyperlink">boxsharp list of features</span>
+        </boxsharp-link>
+    </div>
+
+    <p>If the content is too long to fit into the visible area of the pop-up window, vertical scrollbars are shown. This is illustrated by a randomly-generated
+        <a href="https://en.wikipedia.org/wiki/Lorem_ipsum">Lorem ipsum</a> text. (Refresh the page to generate new text.) Note that if the source element has
+        <code>display: none</code>, it is automatically removed when the content is cloned. This allows content to remain hidden in the document until it is
+        about to be shown in the pop-up window.
+    </p>
+
+    <div class="example">
+        <section id="lorem-ipsum" lang="la" style="display:none;">
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
+                veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate
+                velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit
+                anim id est laborum.</p>
+        </section>
+
+        <boxsharp-link width="800" height="600" href="#lorem-ipsum">
+            <span class="hyperlink">Lorem ipsum dolor sit amet...</span>
         </boxsharp-link>
     </div>
 

@@ -7,9 +7,12 @@
  * @see https://github.com/hunyadi/boxsharp
 **/
 
+* {
+    box-sizing: border-box;
+}
+
 .backdrop {
     position: fixed;
-    box-sizing: border-box;
     left: 0;
     right: 0;
     top: 0;
@@ -26,11 +29,11 @@
 .progress {
     display: inline-block;
     position: absolute;
-    box-sizing: border-box;
     width: 80px;
     height: 80px;
     top: 50%;
     left: 50%;
+    /* offset by half of height to center spinner */
     margin: -40px 0 0 -40px;
     border-radius: 100%;
     border: 10px solid rgba(255, 255, 255, 0.2);
@@ -40,19 +43,18 @@
 }
 
 @keyframes spin {
-    100% {
+    to {
         transform: rotate(360deg);
     }
 }
 
 figure {
-    margin: 20px;
+    margin: 0;
     border: 3px solid darkgray;
     border-radius: 20px;
     overflow: hidden;
 
     position: relative;
-    box-sizing: border-box;
     max-width: 100%;
     max-height: 100%;
 
@@ -78,12 +80,23 @@ boxsharp-draggable,
 picture,
 img,
 video,
-iframe {
+iframe,
+section {
     display: block;
-    box-sizing: border-box;
     max-width: 100%;
     object-fit: contain;
+}
+
+boxsharp-draggable,
+picture,
+img,
+video {
     user-select: none;
+}
+
+section {
+    padding: 10px;
+    overflow-y: auto;
 }
 
 div.unavailable {
@@ -91,7 +104,6 @@ div.unavailable {
 }
 
 figcaption {
-    box-sizing: border-box;
     padding: 0 20px;
     max-width: 100%;
 
@@ -99,29 +111,26 @@ figcaption {
 }
 
 nav>* {
-    background: none center no-repeat;
     position: absolute;
     top: 0;
     bottom: 0;
     width: 60px;
-    background: rgba(0, 0, 0, .5) 50% no-repeat;
+    background: rgba(0, 0, 0, 0.5) 50% no-repeat;
+    opacity: 0;
+}
+
+nav>*:hover {
+    opacity: 1;
 }
 
 nav>.prev {
     left: 0;
-    opacity: 0;
     background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTUgMTV2NzBMMzAgNTB6bTE1IDIwdjMwSDU1VjM1eiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==);
 }
 
 nav>.next {
     right: 0;
-    opacity: 0;
     background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNDUgMTV2NzBsMjUtMzV6TTMwIDM1djMwaDE1VjM1eiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==);
-}
-
-nav>.prev:hover,
-nav>.next:hover {
-    opacity: 1;
 }
 
 @media (hover: none) and (pointer: coarse) {
@@ -139,26 +148,27 @@ nav>.next:hover {
     position: absolute;
     top: 0;
     right: 0;
-    width: 24px;
-    height: 24px;
-    background: rgba(0, 0, 0, .5) 50% no-repeat;
-    background-size: 24px 24px;
+    width: 48px;
+    height: 48px;
+    background: rgba(0, 0, 0, 0.5) 50% no-repeat;
     background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHBhdGggZD0iTTAgMHYxNmg0VjRoMTJWMHptMyAwTDAgM2wxNyAxNyAzLTN6TTAgNDhWMzJoNHYxMmgxMnY0em0zIDAtMy0zIDE3LTE3IDMgM3ptNDUgMFYzMmgtNHYxMkgzMnY0em0tMyAwIDMtMy0xNy0xNy0zIDN6bTMtNDh2MTZoLTRWNEgzMlYwem0tMyAwIDMgMy0xNyAxNy0zLTN6IiBmaWxsPSIjZmZmIi8+PC9zdmc+)
 }
 
-.expander:hover {
-    background-size: 32px 32px;
-}
-
-.expander.expanded {
-    background-size: 32px 32px;
-    background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHBhdGggZD0iTTIwIDIwVjRoLTR2MTJINHY0em0tMyAwIDMtM0wzIDAgMCAzem0zIDh2MTZoLTRWMzJINHYtNHptLTMgMCAzIDNMMyA0OGwtMy0zem0xMSAwdjE2aDRWMzJoMTJ2LTR6bTMgMC0zIDMgMTcgMTcgMy0zem0tMy04VjRoNHYxMmgxMnY0em0zIDAtMy0zTDQ1IDBsMyAzeiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==)
-}
-
+.expander,
 .expander.expanded:hover {
     background-size: 24px 24px;
 }
 
-.hidden {
+.expander:hover,
+.expander.expanded {
+    background-size: 32px 32px;
+}
+
+.expander.expanded {
+    background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHBhdGggZD0iTTIwIDIwVjRoLTR2MTJINHY0em0tMyAwIDMtM0wzIDAgMCAzem0zIDh2MTZoLTRWMzJINHYtNHptLTMgMCAzIDNMMyA0OGwtMy0zem0xMSAwdjE2aDRWMzJoMTJ2LTR6bTMgMC0zIDMgMTcgMTcgMy0zem0tMy04VjRoNHYxMmgxMnY0em0zIDAtMy0zTDQ1IDBsMyAzeiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==)
+}
+
+.hidden,
+.disabled {
     display: none !important;
 }

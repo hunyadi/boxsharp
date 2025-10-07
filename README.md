@@ -5,7 +5,7 @@
 ## Features
 
 - **Modern browser support.** Works seamlessly in Chrome, Edge, Firefox, and Safari.
-- **Versatile content display.** Handles images, videos, PDFs and external pages.
+- **Versatile content display.** Handles images, videos, PDFs, same-page content and external pages.
 - **Custom captions.** Add description to each item using plain text or HTML tags.
 - **Flexible navigation.** Navigate using buttons, keyboard (left/right arrows), mouse, or swipe gestures.
 - **History-aware.** Supports browser *back* and *forward* buttons to close and reopen.
@@ -92,8 +92,14 @@ Some target items don't have an intrinsic size, e.g. when the pop-up window disp
 You can group related items into a collection using the `group` attribute. Visitors to the site are able to navigate between items that are assigned the same identifier without closing the pop-up window using keys *left* and *right* or swipe gestures. Related `<boxsharp-link>` elements can be defined anywhere in the DOM, they don't have to be sibling elements.
 
 ```html
-<boxsharp-link href="URL" group="IDENTIFIER">HTML</boxsharp-link>
-<boxsharp-link href="URL" group="IDENTIFIER">HTML</boxsharp-link>...
+<boxsharp-link href="URL" group="ID">HTML</boxsharp-link>
+<boxsharp-link href="URL" group="ID">HTML</boxsharp-link>...
+```
+
+When the `href` attribute of `<boxsharp-link>` points to an element in the same document (i.e. uses a URL fragment that holds an element `id`), the element and all its descendants are copied to the pop-up window content display slot. If the source element has the inline style `display: none`, it is automatically removed when the content is cloned. This allows content to remain hidden in the document until it is about to be shown in the pop-up window.
+
+```html
+<boxsharp-link href="#ID">HTML</boxsharp-link>
 ```
 
 ## Classic syntax
@@ -127,6 +133,8 @@ Size changes are intercepted via the `resize` event on `window`, and `ResizeObse
 When an image doesn't fit in the browser window dimensions, the *expand* icon is shown. The enlarged view is implemented with a helper web component `<boxsharp-draggable>`. This component captures events triggered by drag-and-drop executed with a mouse or a gesture.
 
 boxsharp interoperates with browser navigation events *back* and *forward* by pushing state to `history`. The *back* button lets you close the pop-up window, and *forward* reopens the window displaying the same image shown earlier. We represent items displayed in the lightbox pop-up window in serializable data structures such that they can be pushed as history states.
+
+When the `href` attribute of `<boxsharp-link>` references an element in the same document, the element is cloned and adopted as "light DOM" by the web component element `<boxsharp-dialog>` via a `<slot>`.
 
 ## Examples
 
