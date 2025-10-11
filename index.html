@@ -12,6 +12,20 @@
         body {
             background-color: #eee;
             font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+            margin: 8px;
+        }
+
+        header {
+            background-color: #ccc;
+            margin: -8px;
+            padding: 8px;
+        }
+
+        @media screen and (hover) {
+            header {
+                top: 0;
+                position: sticky;
+            }
         }
 
         img {
@@ -61,9 +75,12 @@
 </head>
 
 <body>
-    <h1>boxsharp: a responsive lightbox pop-up window</h1>
+    <header>
+        <h1>boxsharp: a responsive lightbox pop-up window</h1>
 
-    <p><a href="https://hunyadi.info.hu/projects/boxsharp/">Demo page</a> | <a href="https://github.com/hunyadi/boxsharp/">Project page</a></p>
+        <nav>by <a href="https://hunyadi.info.hu/">Levente Hunyadi</a> | <a href="https://hunyadi.info.hu/projects/boxsharp/">Demo page</a> | <a
+                href="https://github.com/hunyadi/boxsharp/">Project page</a></nav>
+    </header>
 
     <section id="features">
         <h2>Features</h2>
@@ -214,13 +231,12 @@
         </boxsharp-link>
     </div>
 
-    <p>The media query <code>(hover: none) and (pointer: coarse)</code> typically matches mobile devices but not desktop computers. This lets us provide a
-        different set of images for mobile and desktop. The following example displays a red image on mobile but a green one on desktop.</p>
+    <p>The media query <code>(hover: none)</code> typically matches mobile devices but not desktop computers. This lets us provide a different set of images for
+        mobile and desktop. The following example displays a red image on mobile but a green one on desktop.</p>
 
     <div class="example">
         <boxsharp-link>
-            <source media="(hover: none) and (pointer: coarse)"
-                srcset="images/CD2A3E/900x600.png 900w, images/CD2A3E/600x400.png 600w, images/CD2A3E/300x200.png 300w">
+            <source media="(hover: none)" srcset="images/CD2A3E/300x200.png 300w">
             <source srcset="images/436F4D/900x600.png 900w, images/436F4D/600x400.png 600w, images/436F4D/300x200.png 300w">
             <img src="images/FFFFFF/300x200.png" width="75" height="50" alt="A change of colors" />
         </boxsharp-link>

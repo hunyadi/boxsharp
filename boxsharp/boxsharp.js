@@ -37,7 +37,7 @@
  *
  * @see {@link createStyle}
  * @param {string} path - Path to a stylesheet file to import, relative to the JavaScript file location.
- * @returns {HTMLElement}
+ * @returns {HTMLLinkElement}
  */
 function createStylesheet(path) {
     const elem = document.createElement("link");
@@ -52,7 +52,7 @@ function createStylesheet(path) {
  * A minifier may call this function with a CSS literal string as an input argument.
  *
  * @param {string} css - CSS stylesheet string.
- * @returns {HTMLElement}
+ * @returns {HTMLStyleElement}
  */
 function createStyle(css) {
     const elem = document.createElement("style");
@@ -81,6 +81,7 @@ function HTML(tag, props = {}, ...children) {
  * @param {string} tag - SVG element to create.
  * @param {Object.<string, string>} [props={}] - SVG element attributes.
  * @param {SVGElement[]} children - Direct descendants of the SVG element to create.
+ * @returns {SVGElement}
  */
 function SVG(tag, props = {}, ...children) {
     const svgNS = "http://www.w3.org/2000/svg";
@@ -121,6 +122,18 @@ function createSVG(svg) {
 }
 
 /**
+ * Returns a number whose value is limited to the given range.
+ *
+ * @param {number} value - The value to clamp.
+ * @param {number} min - The lower boundary of the output range.
+ * @param {number} max - The upper boundary of the output range.
+ * @returns {number} A number in the range [min, max].
+ */
+function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+};
+
+/**
  * Implements drag to pan on a large image.
  */
 class BoxsharpDraggable extends HTMLElement {
@@ -147,13 +160,13 @@ class BoxsharpDraggable extends HTMLElement {
     /** @type {number} - Vertical coordinate in browser window for starting mouse/gesture event. */
     #startY = 0;
 
-    /** @type {(ev: MouseEvent) => void} */
+    /** @type {(ev: MouseEvent) => void} - Event handler that assists in drag-and-drop. */
     #mouseup;
-    /** @type {(ev: MouseEvent) => void} */
+    /** @type {(ev: MouseEvent) => void} - Event handler that assists in drag-and-drop. */
     #mousemove;
-    /** @type {(ev: TouchEvent) => void} */
+    /** @type {(ev: TouchEvent) => void} - Event handler that assists in swipe gestures. */
     #touchend;
-    /** @type {(ev: TouchEvent) => void} */
+    /** @type {(ev: TouchEvent) => void} - Event handler that assists in swipe gestures */
     #touchmove;
 
     connectedCallback() {
@@ -252,8 +265,7 @@ user-select: none;
 
     disconnectedCallback() {
         // reset intrinsic element size
-        this.style.width = "0";
-        this.style.height = "0";
+        this.style.width = this.style.height = "0";
 
         document.removeEventListener("mouseup", this.#mouseup);
         document.removeEventListener("mousemove", this.#mousemove);
@@ -303,13 +315,11 @@ user-select: none;
         const parentRect = this.#container.getBoundingClientRect();
         const childRect = draggable.getBoundingClientRect();
 
-        const maxOffsetX = 0;
-        const maxOffsetY = 0;
         const minOffsetX = parentRect.width - childRect.width;
         const minOffsetY = parentRect.height - childRect.height;
 
-        newX = Math.min(maxOffsetX, Math.max(minOffsetX, newX));
-        newY = Math.min(maxOffsetY, Math.max(minOffsetY, newY));
+        newX = clamp(newX, minOffsetX, 0);
+        newY = clamp(newY, minOffsetY, 0);
 
         draggable.style.transform = `translate(${newX}px, ${newY}px)`;
 
@@ -468,14 +478,14 @@ class ImageSourceItem extends Serializable {
         Serializable.register(this);
     }
 
-    /** @type {string} */
+    /** @type {string} - URL to an image. */
     url;
-    /** @type {number} */
+    /** @type {number} - A numeric resolution in the `srcset` attribute syntax, e.g. `640w` */
     width;
 
     /**
-     * @param {string} url - URL to an image.
-     * @param {number} width - A numeric resolution in the `srcset` attribute syntax, e.g. `640w`.
+     * @param {string} url
+     * @param {number} width
      * @returns {ImageSourceItem}
      */
     static create(url, width) {
@@ -594,18 +604,18 @@ class ImageSource extends Serializable {
     type;
     /** @type {string | undefined} - Media query for the resource's intended media. */
     media;
+    /** @type {number | undefined} - Intrinsic image width. */
+    width;
+    /** @type {number | undefined} - Intrinsic image height. */
+    height;
 
     /**
      * @param {ImageSourceSet} srcset
-     * @param {string} [type]
-     * @param {string} [media]
      * @returns {ImageSource}
      */
-    static create(srcset, type, media) {
+    static create(srcset) {
         const self = new ImageSource();
         self.srcset = srcset;
-        self.type = type;
-        self.media = media;
         return self;
     }
 }
@@ -820,6 +830,20 @@ function matchMedia(sources) {
 }
 
 /**
+ * Extracts `width` and `height` of an HTML element.
+ *
+ * @param {Element} elem - HTML element to inspect.
+ * @returns {{width: number | undefined, height: number | undefined}} - Element dimensions in pixels.
+ */
+function dimensions(elem) {
+    /** @type {number} */
+    const width = parseInt(elem.getAttribute("width") ?? "", 10);
+    /** @type {number} */
+    const height = parseInt(elem.getAttribute("height") ?? "", 10);
+    return { width: !isNaN(width) ? width : undefined, height: !isNaN(height) ? height : undefined };
+}
+
+/**
  * Tests whether an element is visible.
  *
  * @param {HTMLElement} elem - The element whose visibility to check.
@@ -839,6 +863,19 @@ function isVisible(elem) {
 function setVisible(elem, state) {
     elem.classList.toggle("hidden", !state);
 }
+
+/**
+ * Navigation actions.
+ *
+ * @readonly
+ * @enum {string}
+ */
+const BoxsharpNavigationAction = {
+    first: "first",
+    prev: "prev",
+    next: "next",
+    last: "last"
+};
 
 class BoxsharpDialogOptions {
     /** @type {boolean} - Whether to show the *previous* navigation button. */
@@ -1121,7 +1158,7 @@ class BoxsharpDialog extends HTMLElement {
      */
     #first() {
         if (isVisible(this.#prevNav)) {
-            this.#navigate("first");
+            this.#navigate(BoxsharpNavigationAction.first);
         }
     }
 
@@ -1132,7 +1169,7 @@ class BoxsharpDialog extends HTMLElement {
      */
     #prev() {
         if (isVisible(this.#prevNav)) {
-            this.#navigate("prev");
+            this.#navigate(BoxsharpNavigationAction.prev);
         }
     }
 
@@ -1143,7 +1180,7 @@ class BoxsharpDialog extends HTMLElement {
      */
     #next() {
         if (isVisible(this.#nextNav)) {
-            this.#navigate("next");
+            this.#navigate(BoxsharpNavigationAction.next);
         }
     }
 
@@ -1154,7 +1191,7 @@ class BoxsharpDialog extends HTMLElement {
      */
     #last() {
         if (isVisible(this.#nextNav)) {
-            this.#navigate("last");
+            this.#navigate(BoxsharpNavigationAction.last);
         }
     }
 
@@ -1296,7 +1333,9 @@ class BoxsharpDialog extends HTMLElement {
                 return HTML("source", {
                     ...imageSource.srcset.toObject(),
                     ...(imageSource.type && { type: imageSource.type }),
-                    ...(imageSource.media && { media: imageSource.media })
+                    ...(imageSource.media && { media: imageSource.media }),
+                    ...(imageSource.width && { width: imageSource.width }),
+                    ...(imageSource.height && { height: imageSource.height })
                 });
             });
             pictureElement.append(...sourceElements);
@@ -1449,7 +1488,8 @@ class BoxsharpDialog extends HTMLElement {
         /** @type {?BoxsharpDialog} */
         let instance = document.body.querySelector("boxsharp-dialog");
         if (!instance) {
-            document.body.append(instance = /** @type {BoxsharpDialog} */ (document.createElement("boxsharp-dialog")));
+            instance = /** @type {BoxsharpDialog} */ (HTML("boxsharp-dialog"));
+            document.body.append(instance);
         }
         return instance;
     }
@@ -1680,35 +1720,35 @@ class BoxsharpCollection {
     /**
      * Navigates to another item in the gallery.
      *
-     * @param {string} action - The action to take.
+     * @param {BoxsharpNavigationAction} action - The action to take.
      * @returns {void}
      */
     #navigate(action) {
         const loop = this.#options.loop;
         const last = this.#items.length - 1;
-        /** @type {?number} */
-        let target = null;
+        /** @type {number | undefined} */
+        let target;
         switch (action) {
-            case "first":
+            case BoxsharpNavigationAction.first:
                 target = 0;
                 break;
-            case "prev":
+            case BoxsharpNavigationAction.prev:
                 target = this.#index - 1;
                 if (target < 0) {
                     target = loop ? last : 0;
                 }
                 break;
-            case "next":
+            case BoxsharpNavigationAction.next:
                 target = this.#index + 1;
                 if (target > last) {
                     target = loop ? 0 : last;
                 }
                 break;
-            case "last":
+            case BoxsharpNavigationAction.last:
                 target = last;
                 break;
         }
-        if (target !== null) {
+        if (target !== undefined) {
             this.#show(target);
         }
     }
@@ -1809,14 +1849,9 @@ class BoxsharpLink extends HTMLElement {
         }
 
         // fetch target width and height (if present)
-        const width = this.getAttribute("width");
-        if (width) {
-            item.width = parseInt(width, 10);
-        }
-        const height = this.getAttribute("height");
-        if (height) {
-            item.height = parseInt(height, 10);
-        }
+        const { width, height } = dimensions(this);
+        item.width = width;
+        item.height = height;
         const srcset = ImageSourceSet.extract(this);
         if (srcset) {
             item.source.push(ImageSource.create(srcset));
@@ -1829,6 +1864,9 @@ class BoxsharpLink extends HTMLElement {
                     const imageSource = ImageSource.create(srcset);
                     imageSource.type = child.getAttribute("type") ?? undefined;
                     imageSource.media = child.getAttribute("media") ?? undefined;
+                    const { width, height } = dimensions(child);
+                    imageSource.width = width;
+                    imageSource.height = height;
                     item.source.push(imageSource);
                 }
             }
