@@ -61,16 +61,31 @@ function createStyle(css) {
 }
 
 /**
+ * Sets properties on an element unless the property value is `undefined`.
+ *
+ * @param {HTMLElement} target - HTML element to assign to.
+ * @param {Object.<string, any>} props - HTML element properties to assign.
+ * @returns {void}
+ */
+function assignIfDefined(target, props) {
+    for (const [name, value] of Object.entries(props)) {
+        if (value !== undefined) {
+            target[name] = value;
+        }
+    }
+}
+
+/**
  * Creates an HTML element.
  *
  * @param {string} tag - HTML element to create.
- * @param {object} [props={}] - HTML element attributes.
+ * @param {Object.<string, any>} [props={}] - HTML element attributes.
  * @param {HTMLElement[]} children - Direct descendants of the HTML element to create.
  * @returns {HTMLElement}
  */
 function HTML(tag, props = {}, ...children) {
     const element = document.createElement(tag);
-    Object.assign(element, props);
+    assignIfDefined(element, props);
     element.append(...children);
     return element;
 };
@@ -1247,7 +1262,7 @@ class BoxsharpDialog extends HTMLElement {
                 const sources = video.map(source => {
                     return HTML("source", {
                         src: source.src,
-                        ...(source.type && { type: source.type })
+                        type: source.type
                     });
                 });
                 videoElement.append(...sources);
@@ -1257,13 +1272,11 @@ class BoxsharpDialog extends HTMLElement {
             videoElement.load();
         } else if (frame) {
             const frameElement = this.#iframe;
-            frameElement.src = frame;
-            if (width) {
-                frameElement.width = width + "";
-            }
-            if (height) {
-                frameElement.height = height + "";
-            }
+            assignIfDefined(frameElement, {
+                src: frame,
+                width: width?.toString(),
+                height: height?.toString()
+            });
             frameElement.addEventListener("load", () => {
                 setVisible(frameElement, true);
                 this.#show(item, showLoadingTimeout);
@@ -1302,7 +1315,7 @@ class BoxsharpDialog extends HTMLElement {
 
             const imageSource = matchMedia(source);
             if (imageSource) {
-                Object.assign(preloader, imageSource.srcset.toObject());
+                assignIfDefined(preloader, imageSource.srcset.toObject());
             } else if (image) {
                 preloader.src = image;
             }
@@ -1332,10 +1345,10 @@ class BoxsharpDialog extends HTMLElement {
             const sourceElements = source.map(imageSource => {
                 return HTML("source", {
                     ...imageSource.srcset.toObject(),
-                    ...(imageSource.type && { type: imageSource.type }),
-                    ...(imageSource.media && { media: imageSource.media }),
-                    ...(imageSource.width && { width: imageSource.width }),
-                    ...(imageSource.height && { height: imageSource.height })
+                    type: imageSource.type,
+                    media: imageSource.media,
+                    width: imageSource.width?.toString(),
+                    height: imageSource.height?.toString()
                 });
             });
             pictureElement.append(...sourceElements);
@@ -1345,7 +1358,7 @@ class BoxsharpDialog extends HTMLElement {
                 imageElement.src = image;
                 for (const imageSource of source) {
                     if (!imageSource.type && !imageSource.media) {
-                        Object.assign(imageElement, imageSource.srcset.toObject());
+                        assignIfDefined(imageElement, imageSource.srcset.toObject());
                     }
                 }
             }
