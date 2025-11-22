@@ -44,10 +44,20 @@
             text-decoration: underline;
         }
 
+        /* custom formatting for same-page content */
         #lorem-ipsum>p::first-letter {
             initial-letter: 2 1;
             font-weight: bold;
             float: left;
+        }
+
+        #lorem-ipsum>p>span.lead {
+            font-weight: bold;
+        }
+
+        /* custom formatting for image/video captions */
+        boxsharp-dialog>figcaption b {
+            color: darkgreen;
         }
     </style>
     <script defer src="boxsharp/boxsharp.min.js" type="module"></script>
@@ -239,6 +249,7 @@
             <source media="(hover: none)" srcset="images/CD2A3E/300x200.png 300w">
             <source srcset="images/436F4D/900x600.png 900w, images/436F4D/600x400.png 600w, images/436F4D/300x200.png 300w">
             <img src="images/FFFFFF/300x200.png" width="75" height="50" alt="A change of colors" />
+            <div slot="caption" hidden>This example displays differently on <b>desktop</b> and <b>mobile</b>.</div>
         </boxsharp-link>
     </div>
 
@@ -361,6 +372,7 @@
     <div class="example">
         <boxsharp-link width="800" height="600" href="https://www.wikipedia.org/">
             <img alt="Wikipedia logo" src="https://upload.wikimedia.org/wikipedia/en/8/80/Wikipedia-logo-v2.svg">
+            <div slot="caption" hidden>This pop-up window displays the <a href="https://www.wikipedia.org/" target="_blank">Wikipedia</a> website.</div>
         </boxsharp-link>
     </div>
 
@@ -398,14 +410,16 @@
 
     <div class="example">
         <section id="lorem-ipsum" lang="la" style="display:none;">
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
-                veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate
-                velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit
-                anim id est laborum.</p>
+            <p><span class="lead">Lorem ipsum dolor sit amet</span>, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna
+                aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in
+                reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui
+                officia deserunt mollit anim id est laborum.</p>
         </section>
 
         <boxsharp-link width="800" height="600" href="#lorem-ipsum">
             <span class="hyperlink">Lorem ipsum dolor sit amet...</span>
+            <div slot="caption" hidden>This pop-up window displays text</div>
+            <div slot="caption" hidden>in <b>Latin</b>.</div>
         </boxsharp-link>
     </div>
 

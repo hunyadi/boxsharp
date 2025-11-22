@@ -80,7 +80,7 @@ function assignIfDefined(target, props) {
  *
  * @param {string} tag - HTML element to create.
  * @param {Object.<string, any>} [props={}] - HTML element attributes.
- * @param {HTMLElement[]} children - Direct descendants of the HTML element to create.
+ * @param {(string | Node)[]} children - Direct descendants of the HTML element to create.
  * @returns {HTMLElement}
  */
 function HTML(tag, props = {}, ...children) {
@@ -134,6 +134,47 @@ function createSVG(svg) {
     const serializer = new XMLSerializer();
     const xmlString = serializer.serializeToString(svg);
     return `url(${createCSSDataURL(xmlString, "image/svg+xml")})`;
+}
+
+/**
+ * Finds the first element in a collection recursively that matches a CSS selector.
+ *
+ * Performs depth-first search. Matches collection elements as well as their descendants.
+ *
+ * @param {Iterable<Element>} elements - A collection of elements to search.
+ * @param {string} selector - CSS selector to match against.
+ * @returns {Element | null} - Matched element (if any).
+ */
+function querySelectorIn(elements, selector) {
+    for (const el of elements) {
+        if (el.matches(selector)) {
+            return el;
+        }
+        const found = el.querySelector(selector);
+        if (found) {
+            return found;
+        }
+    }
+    return null;
+}
+
+/**
+ * Returns a visible clone of the element.
+ *
+ * @param {Node} node - The node to clone.
+ * @returns {Node}
+ */
+function makeVisibleCopy(node) {
+    const copy = node.cloneNode(true);
+    if (copy instanceof HTMLElement) {
+        if (copy.style.display == "none") {
+            copy.style.removeProperty("display");
+        }
+        if (copy.hidden) {
+            copy.removeAttribute("hidden");
+        }
+    }
+    return copy;
 }
 
 /**
@@ -692,16 +733,24 @@ class BoxsharpItem extends Serializable {
     height;
 
     /**
-     * Extracts the caption text from an encapsulating or encapsulated HTML `<figure>` element, or the element itself.
+     * Wraps the nodes for later insertion into a `<figcaption>` element.
+     *
+     * @param {(string | Node)[]} nodes - Child nodes that constitute the caption.
+     * @returns {string}
+     */
+    static asCaption(...nodes) {
+        return HTML("div", {}, ...nodes.map(node => node instanceof Node ? makeVisibleCopy(node) : node)).innerHTML;
+    }
+
+    /**
+     * Extracts the caption from an encapsulating or encapsulated HTML `<figure>` element, or the element itself.
      *
      * @param {HTMLElement} elem - Element used for locating the `<figure>` element.
-     * @returns {string | undefined} - Caption text as raw HTML.
+     * @param {Iterable<Element>} content - Elements encapsulated by the element (child elements or elements assigned to a slot).
+     * @returns {string | undefined} - HTML caption.
      */
-    static #getCaption(elem) {
-        /** @type {string | undefined} */
-        let caption;
-
-        let figure = elem.querySelector("figure");  // element wraps `<figure>`
+    static #getCaption(elem, content) {
+        let figure = querySelectorIn(content, "figure");  // element wraps `<figure>`
         if (!figure) {
             const parent = elem.parentElement;
             if (parent && parent.tagName == "FIGURE") {  // `<figure>` is the immediate parent
@@ -712,24 +761,24 @@ class BoxsharpItem extends Serializable {
         if (figure) {
             const figcaption = figure.querySelector("figcaption");
             if (figcaption) {
-                caption = figcaption.innerHTML;
+                return this.asCaption(...figcaption.childNodes);
             }
         }
 
-        if (!caption) {
-            caption = elem.title;
+        const title = elem.title;
+        if (title) {
+            return this.asCaption(title);
         }
-
-        return caption;
     }
 
     /**
      * Scans a link, its parent and descendant elements to extract their relevant properties.
      *
      * @param {HTMLAnchorElement | BoxsharpLink} anchor - An HTML `a` or `boxsharp-link` element to scan.
+     * @param {Iterable<Element>} [content] - Elements encapsulated by the anchor element (child elements or elements assigned to a slot).
      * @returns {BoxsharpItem}
      */
-    static fromLink(anchor) {
+    static fromLink(anchor, content) {
         /** @type {string | undefined} */
         let imageURL;
         /** @type {?ImageSourceSet} */
@@ -743,7 +792,11 @@ class BoxsharpItem extends Serializable {
         /** @type {string | undefined} */
         let alt;
 
-        const thumbnail = anchor.querySelector("img");
+        if (!content) {
+            content = anchor.children;
+        }
+
+        const thumbnail = /** @type {HTMLImageElement | null} */ (querySelectorIn(content, "img"));
         if (thumbnail) {
             imageURL = thumbnail.src;
             srcset = ImageSourceSet.parse(thumbnail.srcset);
@@ -786,7 +839,7 @@ class BoxsharpItem extends Serializable {
         item.frame = frameURL;
         item.id = id;
         item.alt = alt;
-        item.caption = this.#getCaption(anchor);
+        item.caption = this.#getCaption(anchor, content);
         return item;
     }
 
@@ -817,7 +870,7 @@ class BoxsharpItem extends Serializable {
             }
             item.image = elem.poster;
             item.video = sources;
-            item.caption = this.#getCaption(elem);
+            item.caption = this.#getCaption(elem, elem.children);
         }
         return item;
     }
@@ -921,12 +974,16 @@ class BoxsharpDialog extends HTMLElement {
     #iframe;
     /** @type {HTMLElement} */
     #section;
+    /** @type {HTMLSlotElement} */
+    #content;
     /** @type {HTMLElement} */
     #unavailable;
     /** @type {HTMLElement} */
     #figure;
     /** @type {HTMLElement} */
     #figcaption;
+    /** @type {HTMLSlotElement} */
+    #caption;
     /** @type {HTMLElement} */
     #prevNav;
     /** @type {HTMLElement} */
@@ -943,7 +1000,7 @@ class BoxsharpDialog extends HTMLElement {
     #resizeCallback;
 
     connectedCallback() {
-        const shadow = this.attachShadow({ mode: "open" });
+        const shadow = this.attachShadow({ mode: "open", slotAssignment: "manual" });
 
         shadow.append(
             createStylesheet("boxsharp.css"),
@@ -955,14 +1012,18 @@ class BoxsharpDialog extends HTMLElement {
                     ),
                     this.#video = /** @type {HTMLVideoElement} */ (HTML("video", { controls: true })),
                     this.#iframe = /** @type {HTMLIFrameElement} */ (HTML("iframe", { allow: "fullscreen" })),
-                    this.#section = HTML("section", {}, HTML("slot")),
+                    this.#section = HTML("section", {},
+                        this.#content = /** @type {HTMLSlotElement} */ (HTML("slot"))
+                    ),
                     this.#unavailable = HTML("div", { className: "unavailable", textContent: "🖼️" }),
                     HTML("nav", { class: "pagination" },
                         this.#prevNav = HTML("a", { href: "#", className: "prev", ariaLabel: "←" }),
                         this.#nextNav = HTML("a", { href: "#", className: "next", ariaLabel: "→" }),
                     ),
                     this.#expander = HTML("div", { className: "expander" }),
-                    this.#figcaption = HTML("figcaption"),
+                    this.#figcaption = HTML("figcaption", {},
+                        this.#caption = /** @type {HTMLSlotElement} */ (HTML("slot", { "name": "caption" }))
+                    ),
                 ),
                 this.#progress = HTML("div", { className: "progress" }),
             )
@@ -1134,13 +1195,14 @@ class BoxsharpDialog extends HTMLElement {
         const section = this.#section;
         setVisible(section, false);
         section.removeAttribute("style");
-        this.textContent = "";  // clear content originating from light DOM
+        this.#content.assign();
 
         setVisible(this.#unavailable, false);
 
-        const caption = this.#figcaption;
-        caption.textContent = "";  // remove all children
-        caption.removeAttribute("style");
+        this.#figcaption.removeAttribute("style");
+        this.#caption.assign();
+
+        this.textContent = "";  // clear content originating from light DOM
     }
 
     /**
@@ -1291,11 +1353,9 @@ class BoxsharpDialog extends HTMLElement {
                 if (height) {
                     section.style.height = `${height}px`;
                 }
-                const content = /** @type {HTMLElement} */ (node.cloneNode(true));
-                if (content.style.display == "none") {
-                    content.style.removeProperty("display");
-                }
+                const content = /** @type {HTMLElement} */ (makeVisibleCopy(node));
                 this.append(content);
+                this.#content.assign(content);
                 setVisible(section, true);
             } else {
                 setVisible(unavailable, true);
@@ -1333,7 +1393,7 @@ class BoxsharpDialog extends HTMLElement {
      * @returns {void}
      */
     #show(item, showLoadingTimeout) {
-        const { image, source, alt, caption } = item;
+        const { image, source, alt, caption, width } = item;
 
         clearTimeout(showLoadingTimeout);
         setVisible(this.#progress, false);
@@ -1369,7 +1429,14 @@ class BoxsharpDialog extends HTMLElement {
         }
 
         if (caption) {
-            this.#figcaption.innerHTML = caption;
+            const wrapper = HTML("figcaption");
+            wrapper.innerHTML = caption;
+            this.append(wrapper);
+            this.#caption.assign(wrapper);
+
+            if (width) {
+                this.#figcaption.style.width = `${width}px`;
+            }
         }
 
         if (isVisible(pictureElement)) {
@@ -1849,16 +1916,23 @@ class BoxsharpLink extends HTMLElement {
     #item;
 
     connectedCallback() {
+        const shadow = this.attachShadow({ mode: "open" });
+        const contentSlot = /** @type {HTMLSlotElement} */ (HTML("slot"));
+        const captionSlot = /** @type {HTMLSlotElement} */ (HTML("slot", { "name": "caption" }));
+        shadow.append(contentSlot, captionSlot);
+
+        const content = contentSlot.assignedElements();
+
         /** @type {BoxsharpItem} */
         let item;
-        const video = /** @type {?HTMLVideoElement} */ (this.querySelector("video"));
+        const video = /** @type {HTMLVideoElement | null} */ (querySelectorIn(content, "video"));
         if (video) {
             item = BoxsharpItem.fromVideo(video);
             video.addEventListener("click", (ev) => {
                 ev.preventDefault();
             });
         } else {
-            item = BoxsharpItem.fromLink(this);
+            item = BoxsharpItem.fromLink(this, content);
         }
 
         // fetch target width and height (if present)
@@ -1870,7 +1944,7 @@ class BoxsharpLink extends HTMLElement {
             item.source.push(ImageSource.create(srcset));
         }
 
-        for (const child of this.children) {
+        for (const child of content) {
             if (child.tagName === "SOURCE") {
                 const srcset = ImageSourceSet.extract(child);
                 if (srcset) {
@@ -1883,6 +1957,12 @@ class BoxsharpLink extends HTMLElement {
                     item.source.push(imageSource);
                 }
             }
+        }
+
+        // assign caption
+        const caption = captionSlot.assignedNodes();
+        if (caption.length) {
+            item.caption = BoxsharpItem.asCaption(...caption);
         }
 
         // configure collection display options

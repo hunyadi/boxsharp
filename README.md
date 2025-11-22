@@ -68,8 +68,9 @@ The following information is extracted for a video:
 </boxsharp-link>
 ```
 
-Captions for items are extracted from the following sources:
+Captions for items are extracted from the following sources in the listed order:
 
+* Elements assigned to the slot `caption`. This permits arbitrary HTML. Content of elements assigned to the slot `caption` is concatenated.
 * `<figcaption>` in an encapsulated `<figure>` element. You can put arbitrary HTML in `<figcaption>`.
 * `<figcaption>` in an encapsulating `<figure>` element. This lets us use `<boxsharp-link>` in a `<figure>` element and read the caption text from the sibling element `<figcaption>`.
 * `title` attribute
@@ -80,6 +81,7 @@ Captions for items are extracted from the following sources:
         <img alt="TEXT" src="URL" title="TEXT">
         <figcaption>HTML</figcaption>
     </figure>
+    <div slot="caption">HTML</div>...
 </boxsharp-link>
 ```
 
@@ -120,6 +122,29 @@ Once you call `scan`, the code inspects attributes `href`, `rel`, `data-srcset` 
 
 Captions are extracted from the same sources as with the modern syntax. However, anchor elements cannot nest in HTML, which prevents using links in `<figcaption>` when the entire `<figure>` element is wrapped in the defining `<a rel="...">` element. We recommend that you place the `<a rel="...">` element inside `<figure>`.
 
+## Customizing appearance
+
+Pop-up window caption and same-page content (passed with `href` pointing to an HTML `id`) are adopted via the web component slotting mechanism. This means that CSS styles applied in the host document are inherited.
+
+Assume we set a pop-up window caption using the attribute `slot`:
+
+```html
+<boxsharp-link>
+    ...
+    <div slot="caption" hidden>This example demonstrates how to apply <b>CSS</b>.</div>
+</boxsharp-link>
+```
+
+The optional attribute `hidden` ensures that the text remains invisible unless displayed in the pop-up window.
+
+We can then make the text of the HTML element `<b>` go green when the caption appears under the image/video if we apply the following CSS in the host document:
+
+```css
+boxsharp-dialog>figcaption b {
+    color: darkgreen;
+}
+```
+
 ## How it works
 
 Information extracted from `<boxsharp-link>` elements and their descendants is used to set attributes of and populate elements `<picture>` and `<video>` in a `<figure>` element. These elements are part of a web component `<boxsharp-dialog>`, which represents the lightbox pop-up window.
@@ -135,6 +160,8 @@ When an image doesn't fit in the browser window dimensions, the *expand* icon is
 boxsharp interoperates with browser navigation events *back* and *forward* by pushing state to `history`. The *back* button lets you close the pop-up window, and *forward* reopens the window displaying the same image shown earlier. We represent items displayed in the lightbox pop-up window in serializable data structures such that they can be pushed as history states.
 
 When the `href` attribute of `<boxsharp-link>` references an element in the same document, the element is cloned and adopted as "light DOM" by the web component element `<boxsharp-dialog>` via a `<slot>`.
+
+Elements assigned to the named slot `caption` in `<boxsharp-link>` set the caption as HTML. Copying is performed by getting and setting the property `innerHTML`, which discards event handlers. However, captions also make use of the web component slotting mechanism, and hence inherit CSS rules from host document, which lets you customize how caption text appears.
 
 ## Examples
 
