@@ -78,12 +78,46 @@ function assignIfDefined(target, props) {
 /**
  * Creates an HTML element.
  *
+ * @template {keyof HTMLElementTagNameMap} K
+ *
+ * @overload
+ * @param {K} tag - HTML element to create.
+ * @returns {HTMLElementTagNameMap[K]}
+ *
+ * @overload
+ * @param {K} tag - HTML element to create.
+ * @param {Object.<string, any>} props - HTML element attributes.
+ * @returns {HTMLElementTagNameMap[K]}
+ *
+ * @overload
+ * @param {K} tag - HTML element to create.
+ * @param {Object.<string, any>} props - HTML element attributes.
+ * @param {(string | Node)[]} children - Direct descendants of the HTML element to create.
+ * @returns {HTMLElementTagNameMap[K]}
+ *
+ * @overload
  * @param {string} tag - HTML element to create.
- * @param {Object.<string, any>} [props={}] - HTML element attributes.
+ * @returns {HTMLElement}
+ *
+ * @overload
+ * @param {string} tag - HTML element to create.
+ * @param {Object.<string, any>} props - HTML element attributes.
+ * @returns {HTMLElement}
+ *
+ * @overload
+ * @param {string} tag - HTML element to create.
+ * @param {Object.<string, any>} props - HTML element attributes.
  * @param {(string | Node)[]} children - Direct descendants of the HTML element to create.
  * @returns {HTMLElement}
  */
-function HTML(tag, props = {}, ...children) {
+
+/**
+ * @param {string} tag
+ * @param {Object.<string, any>} [props={}]
+ * @param {(string | Node)[]} [children=[]]
+ * @returns {HTMLElement}
+*/
+function HTML(tag, props = {}, children = []) {
     const element = document.createElement(tag);
     assignIfDefined(element, props);
     element.append(...children);
@@ -248,10 +282,13 @@ position: absolute;
 user-select: none;
 -webkit-user-drag: none;
 }`);
-        const container = this.#container = document.createElement("div");
-        const draggable = this.#draggable = document.createElement("img");
+        const draggable = this.#draggable = HTML("img");
+        const container = this.#container = HTML("div", {}, [
+            HTML("picture", {}, [
+                draggable
+            ])
+        ]);
         draggable.draggable = false;
-        container.append(draggable);
         shadow.append(style, container);
 
         this.#update();
@@ -647,6 +684,19 @@ class ImageSourceSet extends Serializable {
         }
         return null;
     }
+
+    /**
+     * Highest resolution image available in the `srcset` of an element.
+     *
+     * @param {Element} elem - The HTML element to inspect.
+     * @returns {string | undefined} URL to highest resolution image.
+     */
+    static highestFrom(elem) {
+        const srcset = ImageSourceSet.extract(elem);
+        if (srcset && !srcset.empty) {
+            return srcset.highest();
+        }
+    }
 }
 
 class ImageSource extends Serializable {
@@ -735,11 +785,11 @@ class BoxsharpItem extends Serializable {
     /**
      * Wraps the nodes for later insertion into a `<figcaption>` element.
      *
-     * @param {(string | Node)[]} nodes - Child nodes that constitute the caption.
+     * @param {...(string | Node)} nodes - Child nodes that constitute the caption.
      * @returns {string}
      */
     static asCaption(...nodes) {
-        return HTML("div", {}, ...nodes.map(node => node instanceof Node ? makeVisibleCopy(node) : node)).innerHTML;
+        return HTML("div", {}, nodes.map(node => node instanceof Node ? makeVisibleCopy(node) : node)).innerHTML;
     }
 
     /**
@@ -799,7 +849,7 @@ class BoxsharpItem extends Serializable {
         const thumbnail = /** @type {HTMLImageElement | null} */ (querySelectorIn(content, "img"));
         if (thumbnail) {
             imageURL = thumbnail.src;
-            srcset = ImageSourceSet.parse(thumbnail.srcset);
+            srcset = ImageSourceSet.extract(thumbnail);
             alt = thumbnail.alt;
         }
 
@@ -1004,29 +1054,29 @@ class BoxsharpDialog extends HTMLElement {
 
         shadow.append(
             createStylesheet("boxsharp.css"),
-            this.#backdrop = HTML("div", { className: "backdrop" },
-                this.#figure = HTML("figure", {},
+            this.#backdrop = HTML("div", { className: "backdrop" }, [
+                this.#figure = HTML("figure", {}, [
                     this.#draggable = /** @type {BoxsharpDraggable} */ (HTML("boxsharp-draggable")),
-                    this.#picture = HTML("picture", {},
-                        this.#image = /** @type {HTMLImageElement} */ (HTML("img")),
-                    ),
-                    this.#video = /** @type {HTMLVideoElement} */ (HTML("video", { controls: true })),
-                    this.#iframe = /** @type {HTMLIFrameElement} */ (HTML("iframe", { allow: "fullscreen" })),
-                    this.#section = HTML("section", {},
-                        this.#content = /** @type {HTMLSlotElement} */ (HTML("slot"))
-                    ),
+                    this.#picture = HTML("picture", {}, [
+                        this.#image = HTML("img")
+                    ]),
+                    this.#video = HTML("video", { controls: true }),
+                    this.#iframe = HTML("iframe", { allow: "fullscreen" }),
+                    this.#section = HTML("section", {}, [
+                        this.#content = HTML("slot")
+                    ]),
                     this.#unavailable = HTML("div", { className: "unavailable", textContent: "🖼️" }),
-                    HTML("nav", { class: "pagination" },
+                    HTML("nav", { class: "pagination" }, [
                         this.#prevNav = HTML("a", { href: "#", className: "prev", ariaLabel: "←" }),
-                        this.#nextNav = HTML("a", { href: "#", className: "next", ariaLabel: "→" }),
-                    ),
+                        this.#nextNav = HTML("a", { href: "#", className: "next", ariaLabel: "→" })
+                    ]),
                     this.#expander = HTML("div", { className: "expander" }),
-                    this.#figcaption = HTML("figcaption", {},
-                        this.#caption = /** @type {HTMLSlotElement} */ (HTML("slot", { "name": "caption" }))
-                    ),
-                ),
-                this.#progress = HTML("div", { className: "progress" }),
-            )
+                    this.#figcaption = HTML("figcaption", {}, [
+                        this.#caption = HTML("slot", { "name": "caption" })
+                    ])
+                ]),
+                this.#progress = HTML("div", { className: "progress" })
+            ])
         );
 
         this.#sizeObserver = new ResizeObserver((entries) => {
@@ -1179,6 +1229,7 @@ class BoxsharpDialog extends HTMLElement {
         const draggable = this.#draggable;
         setVisible(draggable, false);
         draggable.removeAttribute("src");
+        draggable.textContent = "";
 
         const video = this.#video;
         setVisible(video, false);
@@ -1470,9 +1521,9 @@ class BoxsharpDialog extends HTMLElement {
 
             setVisible(expander, true);
             setVisible(picture, false);
-            const srcset = ImageSourceSet.parse(this.#image.srcset);
-            if (srcset && !srcset.empty) {
-                draggable.setAttribute("src", srcset.highest());
+            const highestURL = ImageSourceSet.highestFrom(this.#image);
+            if (highestURL) {
+                draggable.setAttribute("src", highestURL);
             }
             setVisible(draggable, true);
             this.#figcaption.removeAttribute("style");
@@ -1501,17 +1552,19 @@ class BoxsharpDialog extends HTMLElement {
      */
     #isExpandable() {
         const image = this.#image;
-        let largestSrc = image.currentSrc;
         if (image.srcset) {
-            const srcset = ImageSourceSet.parse(image.srcset);
-            if (srcset && !srcset.empty) {
-                const url = URL.parse(srcset.highest(), document.URL);
+            let largestSrc = image.currentSrc;
+            const highestURL = ImageSourceSet.highestFrom(image);
+            if (highestURL) {
+                const url = URL.parse(highestURL, document.URL);
                 if (url) {
                     largestSrc = url.toString();
                 }
             }
+            return largestSrc !== image.currentSrc || image.naturalWidth !== image.width || image.naturalHeight !== image.height;
+        } else {
+            return false;
         }
-        return largestSrc !== image.currentSrc || image.naturalWidth !== image.width || image.naturalHeight !== image.height;
     }
 
     /**
@@ -1917,8 +1970,8 @@ class BoxsharpLink extends HTMLElement {
 
     connectedCallback() {
         const shadow = this.attachShadow({ mode: "open" });
-        const contentSlot = /** @type {HTMLSlotElement} */ (HTML("slot"));
-        const captionSlot = /** @type {HTMLSlotElement} */ (HTML("slot", { "name": "caption" }));
+        const contentSlot = HTML("slot");
+        const captionSlot = HTML("slot", { "name": "caption" });
         shadow.append(contentSlot, captionSlot);
 
         const content = contentSlot.assignedElements();
