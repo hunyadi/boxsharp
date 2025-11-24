@@ -352,10 +352,6 @@ user-select: none;
         document.addEventListener("touchmove", this.#touchmove);
     }
 
-    connectedMoveCallback() {
-        // nothing to do
-    }
-
     disconnectedCallback() {
         // reset intrinsic element size
         this.style.width = this.style.height = "0";
@@ -1177,10 +1173,6 @@ class BoxsharpDialog extends HTMLElement {
             setVisible(expander, this.#isExpandable());
         });
         imageObserver.observe(this.#figure);
-    }
-
-    connectedMoveCallback() {
-        // nothing to do
     }
 
     disconnectedCallback() {
@@ -2044,10 +2036,6 @@ class BoxsharpLink extends HTMLElement {
         this.addEventListener("click", () => {
             collection.open(item);
         });
-    }
-
-    connectedMoveCallback() {
-        // nothing to do
     }
 
     disconnectedCallback() {

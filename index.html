@@ -66,20 +66,23 @@
         import { BoxsharpCollection } from "./boxsharp/boxsharp.min.js";
         import { generateText } from "./js/sample.js";
         document.addEventListener("DOMContentLoaded", () => {
-            document.querySelectorAll("div.example").forEach(div => {
+            document.querySelectorAll("template.example").forEach(template => {
+                const div = document.createElement("div");
                 const pre = document.createElement("pre");
                 const code = document.createElement("code");
+                div.append(template.content);
                 code.className = "language-html";
                 code.textContent = div.innerHTML;
                 code.textContent = code.textContent.replace(/^\s*/gm, "");
                 pre.append(code);
-                div.after(pre);
+                template.after(div, pre);
+                template.remove();
             });
             hljs.highlightAll();
 
-            BoxsharpCollection.scan();
-
             generateText(document.getElementById("lorem-ipsum"));
+
+            BoxsharpCollection.scan();
         });
     </script>
 </head>
@@ -177,19 +180,19 @@
         window to display the largest image in the source set, press and hold the mouse button, and move the mouse to pan the image.
     </p>
 
-    <div class="example">
+    <template class="example">
         <boxsharp-link>
             <img alt="A small image" src="images/CD2A3E/300x200.png" width="75" height="50" sizes="75px"
                 srcset="images/CD2A3E/3600x2400.png 3600w, images/CD2A3E/2400x1600.png 2400w, images/CD2A3E/1500x1000.png 1500w, images/CD2A3E/1200x800.png 1200w, images/CD2A3E/900x600.png 900w, images/CD2A3E/600x400.png 600w, images/CD2A3E/300x200.png 300w" />
         </boxsharp-link>
-    </div>
+    </template>
 
     <h3>Display a navigable gallery</h3>
 
     <p>This example uses the classic syntax with the <code>rel</code> attribute and shows how several related images can be grouped into a single collection.
     </p>
 
-    <div class="example">
+    <template class="example">
         <a rel="boxsharp-flag" title="A red image"
             data-srcset="images/CD2A3E/3600x2400.png 3600w, images/CD2A3E/2400x1600.png 2400w, images/CD2A3E/1500x1000.png 1500w, images/CD2A3E/1200x800.png 1200w, images/CD2A3E/900x600.png 900w, images/CD2A3E/600x400.png 600w, images/CD2A3E/300x200.png 300w">
             <img src="images/CD2A3E/300x200.png" width="75" height="50" alt="Red" /></a>
@@ -199,7 +202,7 @@
         <a rel="boxsharp-flag" title="A green image"
             data-srcset="images/436F4D/3600x2400.png 3600w, images/436F4D/2400x1600.png 2400w, images/436F4D/1500x1000.png 1500w, images/436F4D/1200x800.png 1200w, images/436F4D/900x600.png 900w, images/436F4D/600x400.png 600w, images/436F4D/300x200.png 300w">
             <img src="images/436F4D/300x200.png" width="75" height="50" alt="Green" /></a>
-    </div>
+    </template>
 
     <h3>Navigable gallery with options</h3>
 
@@ -209,7 +212,7 @@
         related images, the custom attributes must be applied to the first <code>&lt;boxsharp-link&gt;</code> element.
     </p>
 
-    <div class="example">
+    <template class="example">
         <boxsharp-link group="flag" loop="true"
             srcset="images/CD2A3E/3600x2400.png 3600w, images/CD2A3E/2400x1600.png 2400w, images/CD2A3E/1500x1000.png 1500w, images/CD2A3E/1200x800.png 1200w, images/CD2A3E/900x600.png 900w, images/CD2A3E/600x400.png 600w, images/CD2A3E/300x200.png 300w">
             <img src="images/CD2A3E/300x200.png" width="75" height="50" alt="A red image" />
@@ -222,7 +225,7 @@
             srcset="images/436F4D/3600x2400.png 3600w, images/436F4D/2400x1600.png 2400w, images/436F4D/1500x1000.png 1500w, images/436F4D/1200x800.png 1200w, images/436F4D/900x600.png 900w, images/436F4D/600x400.png 600w, images/436F4D/300x200.png 300w">
             <img src="images/436F4D/300x200.png" width="75" height="50" alt="A green image" />
         </boxsharp-link>
-    </div>
+    </template>
 
     <h3>Media queries</h3>
 
@@ -232,7 +235,7 @@
         <code>&lt;boxsharp-link&gt;</code> when the page is displayed.
     </p>
 
-    <div class="example">
+    <template class="example">
         <boxsharp-link>
             <source type="image/png" media="(max-width: 600px)"
                 srcset="images/CD2A3E/900x600.png 900w, images/CD2A3E/600x400.png 600w, images/CD2A3E/300x200.png 300w">
@@ -241,25 +244,25 @@
             <source type="image/png" srcset="images/436F4D/900x600.png 900w, images/436F4D/600x400.png 600w, images/436F4D/300x200.png 300w">
             <img src="images/FFFFFF/300x200.png" width="75" height="50" alt="A change of colors" />
         </boxsharp-link>
-    </div>
+    </template>
 
     <p>The media query <code>(hover: none)</code> typically matches mobile devices but not desktop computers. This lets us provide a different set of images for
         mobile and desktop. The following example displays a red image on mobile but a green one on desktop.</p>
 
-    <div class="example">
+    <template class="example">
         <boxsharp-link>
             <source media="(hover: none)" srcset="images/CD2A3E/300x200.png 300w">
             <source srcset="images/436F4D/900x600.png 900w, images/436F4D/600x400.png 600w, images/436F4D/300x200.png 300w">
             <img src="images/FFFFFF/300x200.png" width="75" height="50" alt="A change of colors" />
             <div slot="caption" hidden>This example displays differently on <b>desktop</b> and <b>mobile</b>.</div>
         </boxsharp-link>
-    </div>
+    </template>
 
     <h3>Figures</h3>
 
     <p>The example below shows how to use the web component syntax with a <code>&lt;figure&gt;</code> element.</p>
 
-    <div class="example">
+    <template class="example">
         <boxsharp-link>
             <figure>
                 <img alt="A placeholder image" src="https://placehold.co/300x200.png" width="300" height="200" sizes="300px"
@@ -269,21 +272,21 @@
                         href="https://hunyadi.info.hu/levente/" target="_blank">Levente Hunyadi</a>.</figcaption>
             </figure>
         </boxsharp-link>
-    </div>
+    </template>
 
     <p>The following example shows how to use an <code>&lt;a&gt;</code> element with a <code>rel</code> attribute in a <code>&lt;figure&gt;</code> element. The
         figure caption contains a link. We cannot wrap the entire <code>&lt;figure&gt;</code> in an <code>&lt;a&gt;</code> element because
         <code>&lt;a&gt;</code> elements cannot nest.
     </p>
 
-    <div class="example">
+    <template class="example">
         <figure>
             <a href="#" rel="boxsharp"
                 data-srcset="https://placehold.co/3600x2400.png 3600w, https://placehold.co/2400x1600.png 2400w, https://placehold.co/1500x1000.png 1500w, https://placehold.co/1200x800.png 1200w, https://placehold.co/900x600.png 900w, https://placehold.co/600x400.png 600w, https://placehold.co/300x200.png 300w">
                 <img src="https://placehold.co/300x200.png" alt="A placeholder image" /></a>
             <figcaption>Photo by <a href="https://hunyadi.info.hu/levente/" target="_blank">Levente Hunyadi</a>.</figcaption>
         </figure>
-    </div>
+    </template>
 
     <h3>Link with text</h3>
 
@@ -313,7 +316,7 @@
         <code>&lt;source&gt;</code> elements is propagated to the pop-up window.
     </p>
 
-    <div class="example">
+    <template class="example">
         <boxsharp-link>
             <figure>
                 <figcaption style="display: none;">
@@ -326,13 +329,13 @@
                 </video>
             </figure>
         </boxsharp-link>
-    </div>
+    </template>
 
-    <div class="example">
+    <template class="example">
         <boxsharp-link href="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">
             <span class="hyperlink">Big Buck Bunny</span>
         </boxsharp-link>
-    </div>
+    </template>
 
     <h3>Display a video from YouTube</h3>
 
@@ -343,12 +346,12 @@
         <li>Create a <code>&lt;boxsharp-link&gt;</code> with attributes <code>width</code>, <code>height</code> and <code>href</code>.</li>
     </ol>
 
-    <div class="example">
+    <template class="example">
         <boxsharp-link width="560" height="315" href="https://www.youtube.com/embed/CKclyyL6Uzw?si=TmUtXqDBeeQDVRw6">
             <span
                 style="display: inline-block; border-radius: 25px; background-color: red; color: white; width: 100px; height: 75px; font-size: 45px; line-height: 75px; text-align: center; cursor: pointer;">▶</span>
         </boxsharp-link>
-    </div>
+    </template>
 
     <h3>Location on Maps</h3>
 
@@ -359,36 +362,36 @@
         <li>Create a <code>&lt;boxsharp-link&gt;</code> with attributes <code>width</code>, <code>height</code> and <code>href</code>.</li>
     </ol>
 
-    <div class="example">
+    <template class="example">
         <boxsharp-link width="600" height="600"
             href="https://maps.google.com/maps?q=Budapest+University+of+Technology+and+Economics&amp;hl=en&amp;ie=UTF8&amp;ll=47.481307,19.056215&amp;spn=0.01005,0.022724&amp;sll=37.0625,-95.677068&amp;sspn=47.885545,93.076172&amp;vpsrc=6&amp;t=m&amp;z=16&amp;output=embed">
             <span style="font-size: 75px; cursor: pointer;">🗺️</span>
         </boxsharp-link>
-    </div>
+    </template>
 
     <h3>Display external content</h3>
 
     <p>The example below points to an external website. When the pop-up window opens, the content is visualized in <code>&lt;iframe&gt;</code> element. We use
         attributes <code>width</code> and <code>height</code> because <code>&lt;iframe&gt;</code> doesn't have intrinsic dimensions.</p>
 
-    <div class="example">
+    <template class="example">
         <boxsharp-link width="800" height="600" href="https://www.wikipedia.org/">
             <img alt="Wikipedia logo" src="https://upload.wikimedia.org/wikipedia/en/8/80/Wikipedia-logo-v2.svg">
             <div slot="caption" hidden>This pop-up window displays the <a href="https://www.wikipedia.org/" target="_blank">Wikipedia</a> website.</div>
         </boxsharp-link>
-    </div>
+    </template>
 
     <h3>PDF</h3>
 
     <p><a href="https://www.rfc-editor.org/rfc/rfc3778#section-3">PDF-open</a> parameters allow us to customize the appearance of a PDF document shown in the
         pop-up window. Notice how the following link to a PDF document contains key-value parameters in the URL fragment how to display the PDF.</p>
 
-    <div class="example">
+    <template class="example">
         <boxsharp-link width="800" height="600"
             href="https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf#page=2&pagemode=none&view=FitH">
             <span class="hyperlink">PDF</span>
         </boxsharp-link>
-    </div>
+    </template>
 
     <h3>Same-page content</h3>
 
@@ -398,11 +401,11 @@
         the pop-up window.
     </p>
 
-    <div class="example">
+    <template class="example">
         <boxsharp-link href="#features">
             <span class="hyperlink">boxsharp list of features</span>
         </boxsharp-link>
-    </div>
+    </template>
 
     <p>If the content is too long to fit into the visible area of the pop-up window, vertical scrollbars are shown. This is illustrated by a randomly-generated
         <a href="https://en.wikipedia.org/wiki/Lorem_ipsum">Lorem ipsum</a> text. (Refresh the page to generate new text.) Note that if the source element has
@@ -410,7 +413,7 @@
         about to be shown in the pop-up window.
     </p>
 
-    <div class="example">
+    <template class="example">
         <section id="lorem-ipsum" lang="la" style="display:none;">
             <p><span class="lead">Lorem ipsum dolor sit amet</span>, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna
                 aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in
@@ -423,7 +426,7 @@
             <div slot="caption" hidden>This pop-up window displays text</div>
             <div slot="caption" hidden>in <b>Latin</b>.</div>
         </boxsharp-link>
-    </div>
+    </template>
 
     <h3>Unavailable resource</h3>
 
