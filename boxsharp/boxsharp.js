@@ -1195,7 +1195,7 @@ class BoxsharpDialog extends HTMLElement {
      * @returns {void}
      */
     reset() {
-        this.#sizeObserver.disconnect();
+        this.#unobserve();
 
         setVisible(this.#backdrop, false);
         setVisible(this.#progress, false);
@@ -1443,7 +1443,6 @@ class BoxsharpDialog extends HTMLElement {
 
         const pictureElement = this.#picture;
         const imageElement = this.#image;
-        const videoElement = this.#video;
         if (image || source.length) {
             const sourceElements = source.map(imageSource => {
                 return HTML("source", {
@@ -1482,12 +1481,7 @@ class BoxsharpDialog extends HTMLElement {
             }
         }
 
-        if (isVisible(pictureElement)) {
-            this.#sizeObserver.observe(imageElement);
-        }
-        if (isVisible(videoElement)) {
-            this.#sizeObserver.observe(videoElement);
-        }
+        this.#observe();
 
         // trigger transition to full size
         const figure = this.#figure;
@@ -1504,13 +1498,11 @@ class BoxsharpDialog extends HTMLElement {
         const picture = this.#picture;
         const draggable = this.#draggable;
         const expander = this.#expander;
-        const observer = this.#sizeObserver;
 
         expander.classList.toggle("expanded", isExpanded);
 
+        this.#unobserve();
         if (isExpanded) {
-            observer.disconnect();
-
             setVisible(expander, true);
             setVisible(picture, false);
             const highestURL = ImageSourceSet.highestFrom(this.#image);
@@ -1524,7 +1516,7 @@ class BoxsharpDialog extends HTMLElement {
             draggable.removeAttribute("src");
             setVisible(picture, true);
 
-            observer.observe(this.#image);
+            this.#observe();
         }
     }
 
@@ -1560,36 +1552,76 @@ class BoxsharpDialog extends HTMLElement {
     }
 
     /**
+     * Returns the element that should respond to layout changes.
+     *
+     * @returns {HTMLElement | undefined}
+     */
+    #observable() {
+        if (isVisible(this.#picture)) {
+            return this.#image;
+        }
+
+        const video = this.#video;
+        if (isVisible(video)) {
+            return video;
+        }
+    }
+
+    /**
+     * Starts listening to layout changes.
+     *
+     * @returns {void}
+     */
+    #observe() {
+        const target = this.#observable();
+        if (target) {
+            this.#sizeObserver.observe(target);
+        }
+    }
+
+    /**
+     * Stops listening to layout changes.
+     *
+     * @returns {void}
+     */
+    #unobserve() {
+        this.#sizeObserver.disconnect();
+    }
+
+    /**
      * Checks if child elements of figure overflow their container and updates the layout if necessary.
      *
      * @returns {void}
      */
     #layout() {
-        /** @type {HTMLElement | undefined} */
-        let target;
-        const video = this.#video;
-        if (isVisible(this.#picture)) {
-            target = this.#image;
-        } else if (isVisible(video)) {
-            target = video;
-        } else {
+        this.#unobserve();
+
+        const target = this.#observable();
+        if (!target) {
             return;
         }
 
         const figure = this.#figure;
-        if (figure.scrollHeight < 0.8 * window.innerHeight) {
+        if (figure.offsetHeight < this.#backdrop.clientHeight) {
             // remove constraints if there is sufficient space
             target.style.removeProperty("width");
         }
 
-        if (figure.scrollHeight > figure.clientHeight) {
+        /** @type {number} */
+        let scrollHeight;
+        /** @type {number} */
+        let clientHeight;
+        while ((scrollHeight = figure.scrollHeight) > (clientHeight = figure.clientHeight)) {
             // decrease image or video size if it leads to overflow in container
-            const factor = figure.clientHeight / figure.scrollHeight;
+            const factor = clientHeight / scrollHeight;
             const width = Math.floor(target.clientWidth * factor);
-            if (width > 100 && width != target.clientWidth) {
-                target.style.width = `${width}px`;
+            if (width < 320) {
+                break;
             }
+            target.style.width = `${width}px`;
         }
+
+        this.#observe();
     }
 
     /**
