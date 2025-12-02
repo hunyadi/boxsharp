@@ -449,6 +449,38 @@
             <span class="hyperlink">Missing</span>
         </boxsharp-link>
     </p>
+
+    <h3>Creating a pop-up window trigger programmatically</h3>
+
+    <p>The following example is a <code>&lt;boxsharp-link&gt;</code> element created dynamically in JavaScript when DOM content has loaded. Clicking the toggle
+        button adds/removes the element to/from the DOM.</p>
+
+    <button type="button" id="button-visibility">Hide</button>
+    <div id="panel-content"></div>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const link = document.createElement("boxsharp-link");
+            link.setAttribute("href", "images/CD2A3E/900x600.png");
+            const span = document.createElement("span");
+            span.className = "hyperlink";
+            span.textContent = "Link";
+            link.append(span);
+
+            const button = document.getElementById("button-visibility");
+            button.addEventListener("click", () => {
+                if (document.body.contains(link)) {
+                    link.remove();
+                    button.textContent = "Show";
+                } else {
+                    panel.append(link);
+                    button.textContent = "Hide";
+                }
+            });
+
+            const panel = document.getElementById("panel-content");
+            panel.append(link);
+        });
+    </script>
 </body>
 
 </html>

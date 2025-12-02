@@ -1991,14 +1991,21 @@ class BoxsharpLink extends HTMLElement {
     #collection;
     /** @type {BoxsharpItem} */
     #item;
+    /** @type {HTMLSlotElement} */
+    #contentSlot;
+    /** @type {HTMLSlotElement} */
+    #captionSlot;
 
     connectedCallback() {
-        const shadow = this.attachShadow({ mode: "open" });
-        const contentSlot = HTML("slot");
-        const captionSlot = HTML("slot", { "name": "caption" });
-        shadow.append(contentSlot, captionSlot);
+        if (!this.shadowRoot) {
+            // creates the shadow tree for the element at most once
+            this.attachShadow({ mode: "open" }).append(
+                this.#contentSlot = HTML("slot"),
+                this.#captionSlot = HTML("slot", { "name": "caption" })
+            );
+        }
 
-        const content = contentSlot.assignedElements();
+        const content = this.#contentSlot.assignedElements();
 
         /** @type {BoxsharpItem} */
         let item;
@@ -2037,7 +2044,7 @@ class BoxsharpLink extends HTMLElement {
         }
 
         // assign caption
-        const caption = captionSlot.assignedNodes();
+        const caption = this.#captionSlot.assignedNodes();
         if (caption.length) {
             item.caption = BoxsharpItem.asCaption(...caption);
         }
