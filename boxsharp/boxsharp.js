@@ -722,7 +722,6 @@ class ImageSource extends Serializable {
     }
 }
 
-
 /**
  * Source URL and media type pairs captured by the HTML `source` element.
  */
@@ -2103,4 +2102,4 @@ customElements.define("boxsharp-draggable", BoxsharpDraggable);
 customElements.define("boxsharp-dialog", BoxsharpDialog);
 customElements.define("boxsharp-link", BoxsharpLink);
 
-export { BoxsharpDialog, BoxsharpCollection, BoxsharpItem };
+export { BoxsharpCollection, BoxsharpCollectionOptions, BoxsharpDialog, BoxsharpItem, ImageSource, ImageSourceSet, VideoSource };

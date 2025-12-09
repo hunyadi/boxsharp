@@ -64,20 +64,10 @@
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <script defer type="module">
         import { BoxsharpCollection } from "./boxsharp/boxsharp.min.js";
+        import { createCodeBlocks } from "./js/codeblock.js";
         import { generateText } from "./js/sample.js";
         document.addEventListener("DOMContentLoaded", () => {
-            document.querySelectorAll("template.example").forEach(template => {
-                const div = document.createElement("div");
-                const pre = document.createElement("pre");
-                const code = document.createElement("code");
-                div.append(template.content);
-                code.className = "language-html";
-                code.textContent = div.innerHTML;
-                code.textContent = code.textContent.replace(/^\s*/gm, "");
-                pre.append(code);
-                template.after(div, pre);
-                template.remove();
-            });
+            createCodeBlocks();
             hljs.highlightAll();
 
             generateText(document.getElementById("lorem-ipsum"));
@@ -450,7 +440,7 @@
         </boxsharp-link>
     </p>
 
-    <h3>Creating a pop-up window trigger programmatically</h3>
+    <h3>Create a pop-up window trigger from code</h3>
 
     <p>The following example is a <code>&lt;boxsharp-link&gt;</code> element created dynamically in JavaScript when DOM content has loaded. Clicking the toggle
         button adds/removes the element to/from the DOM.</p>
@@ -479,6 +469,54 @@
 
             const panel = document.getElementById("panel-content");
             panel.append(link);
+        });
+    </script>
+
+    <h3>Create a gallery and open a pop-up window from code</h3>
+
+    <p>The advanced example below creates an image gallery and a pop-up window fully programmatically. The code locates the HTML element with the
+        <code>id</code> of <code>gallery-from-code</code>, and adds a click event listener that opens the pop-up window, displaying an image randomly chosen
+        from the collection. All the properties of the items in the collection are set on the fly.
+    </p>
+
+    <a href="#" id="gallery-from-code">Open a random image</a>
+    <script defer type="module" class="example">
+        import { BoxsharpCollection, BoxsharpCollectionOptions, BoxsharpDialog, BoxsharpItem, ImageSource, ImageSourceSet } from "./boxsharp/boxsharp.min.js";
+
+        // create and share a single pop-up window instance for the entire page
+        const dialog = BoxsharpDialog.singleton();
+
+        // create items in the collection, setting attributes like image source set and caption
+        const red = new BoxsharpItem();
+        const rs = ImageSourceSet.parse("images/CD2A3E/2400x1600.png 2400w, images/CD2A3E/1500x1000.png 1500w, images/CD2A3E/1200x800.png 1200w, images/CD2A3E/900x600.png 900w, images/CD2A3E/600x400.png 600w, images/CD2A3E/300x200.png 300w");
+        if (rs)
+            red.source.push(ImageSource.create(rs));
+        red.caption = "A red image";
+
+        const white = new BoxsharpItem();
+        const ws = ImageSourceSet.parse("images/FFFFFF/2400x1600.png 2400w, images/FFFFFF/1500x1000.png 1500w, images/FFFFFF/1200x800.png 1200w, images/FFFFFF/900x600.png 900w, images/FFFFFF/600x400.png 600w, images/FFFFFF/300x200.png 300w");
+        if (ws)
+            white.source.push(ImageSource.create(ws));
+        white.caption = "A white image";
+
+        const green = new BoxsharpItem();
+        const gs = ImageSourceSet.parse("images/436F4D/2400x1600.png 2400w, images/436F4D/1500x1000.png 1500w, images/436F4D/1200x800.png 1200w, images/436F4D/900x600.png 900w, images/436F4D/600x400.png 600w, images/436F4D/300x200.png 300w");
+        if (gs)
+            green.source.push(ImageSource.create(gs));
+        green.caption = "A green image";
+
+        // set visualization options
+        const options = new BoxsharpCollectionOptions();
+        options.loop = true;
+
+        // create the collection
+        const items = [red, white, green];
+        const collection = new BoxsharpCollection(dialog, items, options);
+
+        // trigger the pop-up window on a click event
+        document.getElementById("gallery-from-code").addEventListener("click", (ev) => {
+            collection.open(items[Math.floor(Math.random() * items.length)]);
+            ev.preventDefault();
         });
     </script>
 </body>
