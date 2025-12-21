@@ -217,7 +217,7 @@ function makeVisibleCopy(node) {
  * @param {number} value - The value to clamp.
  * @param {number} min - The lower boundary of the output range.
  * @param {number} max - The upper boundary of the output range.
- * @returns {number} A number in the range [min, max].
+ * @returns {number} - A number in the range [min, max].
  */
 function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
@@ -597,16 +597,9 @@ class ImageSourceSet extends Serializable {
     items;
 
     /**
-     * @returns {boolean} - True if the source set is empty.
-     */
-    get empty() {
-        return this.items.length === 0;
-    }
-
-    /**
      * Lowest resolution image available in the set.
      *
-     * @returns {string} URL to lowest resolution image.
+     * @returns {string} - URL to the lowest resolution image.
      */
     lowest() {
         return this.items[this.items.length - 1].url;
@@ -615,10 +608,26 @@ class ImageSourceSet extends Serializable {
     /**
      * Highest resolution image available in the set.
      *
-     * @returns {string} URL to highest resolution image.
+     * @returns {string} - URL to the highest resolution image.
      */
     highest() {
         return this.items[0].url;
+    }
+
+    /**
+     * Makes a best-effort attempt at finding the image in the set whose resolution is at least the desired value.
+     *
+     * @param {number} width - Value to compare against.
+     * @returns {string} - URL to an image whose resolution is preferable greater than the desired value.
+     */
+    covers(width) {
+        const items = this.items;
+        for (let i = items.length - 1; i >= 0; --i) {
+            if (items[i].width >= width) {
+                return items[i].url;
+            }
+        }
+        return items[0].url;
     }
 
     /**
@@ -679,19 +688,6 @@ class ImageSourceSet extends Serializable {
             }
         }
         return null;
-    }
-
-    /**
-     * Highest resolution image available in the `srcset` of an element.
-     *
-     * @param {Element} elem - The HTML element to inspect.
-     * @returns {string | undefined} URL to highest resolution image.
-     */
-    static highestFrom(elem) {
-        const srcset = ImageSourceSet.extract(elem);
-        if (srcset && !srcset.empty) {
-            return srcset.highest();
-        }
     }
 }
 
@@ -1182,7 +1178,7 @@ class BoxsharpDialog extends HTMLElement {
     /**
      * Determines whether the lightbox pop-up window is shown.
      *
-     * @returns {boolean} True if the lightbox pop-up window is visible on the screen.
+     * @returns {boolean} - True if the lightbox pop-up window is visible on the screen.
      */
     get visible() {
         return isVisible(this.#backdrop);
@@ -1504,9 +1500,9 @@ class BoxsharpDialog extends HTMLElement {
         if (isExpanded) {
             setVisible(expander, true);
             setVisible(picture, false);
-            const highestURL = ImageSourceSet.highestFrom(this.#image);
-            if (highestURL) {
-                draggable.setAttribute("src", highestURL);
+            const bestURL = ImageSourceSet.extract(this.#image)?.covers(2 * Math.max(screen.width, screen.height));
+            if (bestURL) {
+                draggable.setAttribute("src", bestURL);
             }
             setVisible(draggable, true);
             this.#figcaption.removeAttribute("style");
@@ -1537,7 +1533,7 @@ class BoxsharpDialog extends HTMLElement {
         const image = this.#image;
         if (image.srcset) {
             let largestSrc = image.currentSrc;
-            const highestURL = ImageSourceSet.highestFrom(image);
+            const highestURL = ImageSourceSet.extract(image)?.highest();
             if (highestURL) {
                 const url = URL.parse(highestURL, document.URL);
                 if (url) {
