@@ -179,7 +179,7 @@ def _data_url_substitute(js: str) -> str:
     "Substitutes data URLs embedded in strings with a function call that creates them dynamically."
 
     def _visit(node: ET.Element, s: StringIO) -> None:
-        tag = node.tag.replace("{http://www.w3.org/2000/svg}", "", count=1)
+        tag = node.tag.replace("{http://www.w3.org/2000/svg}", "", 1)
         s.write(f'SVG("{tag}"')
         if node.attrib:
             s.write(f",{json.dumps(node.attrib)}")

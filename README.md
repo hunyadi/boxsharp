@@ -13,7 +13,7 @@
 - **Optimized image loading.** Automatically selects the smallest image that fills the viewport.
 - **Responsive design.** Oversized content is scaled down to fit the browser window.
 - **Easy integration.** Includes a simple API and ready-to-use code snippets for fast setup.
-- **Lightweight.** Less than 7 KB when gzipped.
+- **Lightweight.** ~7 KB when gzipped.
 - **No dependencies.** Built with 100% CSS and pure JavaScript (ES2020, Web Components).
 
 ## Setup
